@@ -2,11 +2,10 @@ Metadata-Version: 2.4
 Name: celljanus
 Version: 0.1.0
 Summary: CellJanus: A Dual-Perspective Tool for Deconvolving Host Single-Cell and Microbial Transcriptomes
-Author: CellJanus Team
+Author: Zhaoqing Wang
 License: MIT
-Project-URL: Homepage, https://github.com/celljanus/celljanus
-Project-URL: Documentation, https://celljanus.readthedocs.io
-Project-URL: Repository, https://github.com/celljanus/celljanus
+Project-URL: Homepage, https://github.com/zhaoqing-wang/CellJanus
+Project-URL: Repository, https://github.com/zhaoqing-wang/CellJanus
 Keywords: bioinformatics,metagenomics,single-cell,spatial-transcriptomics,microbiome,host-microbe,deconvolution
 Classifier: Development Status :: 3 - Alpha
 Classifier: Intended Audience :: Science/Research
@@ -101,43 +100,120 @@ Dynamic: license-file
 
 ## Installation
 
-### Prerequisites (External Tools)
+### Platform Support
 
-Install these C/C++ tools and add them to your system PATH:
+CellJanus's Python package runs on all platforms, but the external bioinformatics tools
+(fastp, Bowtie2, samtools, Kraken2, Bracken) are **Linux/macOS-only** via bioconda.
+Windows users must use **WSL2** or download pre-compiled binaries manually.
 
-| Tool | Version | Install |
-|------|---------|---------|
-| **fastp** | ≥0.23 | `conda install -c bioconda fastp` or [download binary](https://github.com/OpenGene/fastp/releases) |
-| **Bowtie2** | ≥2.5 | `conda install -c bioconda bowtie2` or [download](https://github.com/BenLangmead/bowtie2/releases) |
-| **samtools** | ≥1.17 | `conda install -c bioconda samtools` or [download](https://github.com/samtools/samtools/releases) |
-| **Kraken2** | ≥2.1 | `conda install -c bioconda kraken2` or [build from source](https://github.com/DerrickWood/kraken2) |
-| **Bracken** | ≥2.8 | `conda install -c bioconda bracken` or [build from source](https://github.com/jenniferlu717/Bracken) |
+| Component | Linux | macOS | Windows (native) | Windows (WSL2) |
+|-----------|:-----:|:-----:|:-----------------:|:--------------:|
+| CellJanus (Python) | ✅ | ✅ | ✅ | ✅ |
+| fastp | ✅ conda | ✅ conda | ⚠️ binary only | ✅ conda |
+| Bowtie2 | ✅ conda | ✅ conda | ⚠️ binary only | ✅ conda |
+| samtools | ✅ conda | ✅ conda | ⚠️ MSYS2 / binary | ✅ conda |
+| Kraken2 | ✅ conda | ✅ conda | ❌ WSL2 required | ✅ conda |
+| Bracken | ✅ conda | ✅ conda | ❌ WSL2 required | ✅ conda |
+| pysam | ✅ | ✅ | ❌ build fails | ✅ |
 
-**Recommended**: Install all via conda/mamba:
+> **Note**: `pysam` is intentionally **not** a dependency. All BAM operations use
+> `samtools` via subprocess, avoiding the Windows build failures caused by `pysam`
+> (which requires POSIX `make` and `htslib` C compilation).
+
+---
+
+### Option A: Linux / macOS / WSL2 (Recommended)
+
+One-step install — all tools via bioconda:
+
 ```bash
-conda create -n celljanus -c bioconda -c conda-forge \
+# Create environment with all external tools + Python
+conda create -n CellJanus -c bioconda -c conda-forge \
     fastp bowtie2 samtools kraken2 bracken python=3.11
-conda activate celljanus
+conda activate CellJanus
+
+# Install CellJanus
+cd CellJanus
+pip install -e .       # editable (development)
+# or: pip install .    # standard install
 ```
 
-### Install CellJanus
+### Option B: Windows Native (Two-Step)
+
+bioconda packages do **not** exist for `win-64`. You must install the Python package
+and the external tools separately:
+
+**Step 1 — Python environment + CellJanus**
 
 ```bash
-# From source
+conda create -n CellJanus python=3.11
+conda activate CellJanus
 cd CellJanus
 pip install -e .
-
-# Or directly
-pip install .
 ```
+
+**Step 2 — External tools (manual download)**
+
+Download pre-compiled binaries and add them to your system `PATH`:
+
+| Tool | Windows binary | Notes |
+|------|---------------|-------|
+| **fastp** | [GitHub Releases](https://github.com/OpenGene/fastp/releases) — `fastp.exe` | ✅ Native `.exe` available |
+| **Bowtie2** | [GitHub Releases](https://github.com/BenLangmead/bowtie2/releases) — `bowtie2-*-mingw-x86_64.zip` | ✅ Native `.exe` available |
+| **samtools** | [MSYS2](https://packages.msys2.org/package/mingw-w64-x86_64-samtools) or build via MSYS2 | ⚠️ No official Windows binary |
+| **Kraken2** | ❌ No Windows build — use WSL2 or Docker | Linux-only (POSIX) |
+| **Bracken** | ❌ No Windows build — use WSL2 or Docker | Linux-only (POSIX) |
+
+> **Tip**: For full pipeline functionality on Windows, **WSL2 is strongly recommended**.
+> Install [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install), then follow
+> Option A inside your WSL2 Linux distribution.
+
+### Option C: Docker (Any Platform)
+
+```bash
+# Coming soon — Dockerfile in roadmap
+```
+
+---
 
 ### Verify Installation
 
 ```bash
 celljanus check
+# or, if 'celljanus' is not on PATH:
+python -m celljanus check
 ```
 
-This prints a table showing which external tools are available.
+This prints a table showing which external tools are detected and their versions.
+
+<details>
+<summary><strong>Troubleshooting</strong></summary>
+
+**`celljanus` command not found after `pip install`**
+
+pip may install the entry point to a directory not on your PATH. Use:
+```bash
+python -m celljanus check
+```
+Or add the conda environment's `Scripts/` directory to your PATH.
+
+**`pysam` / `htslib` build errors**
+
+CellJanus does **not** require `pysam`. If you see `pysam` errors from another
+package, they are unrelated to CellJanus. All BAM operations use `samtools` CLI.
+
+**`conda install -c bioconda fastp` fails on Windows**
+
+bioconda packages are built for Linux and macOS only. On Windows, download
+the binary from the tool's GitHub Releases page or use WSL2.
+
+**`ERROR: Could not build wheels for pysam`**
+
+This error occurs if you manually try to install `pysam` — it requires POSIX
+`make` and `htslib` compilation, which is not available on Windows.
+CellJanus deliberately avoids this dependency.
+
+</details>
 
 ---
 
@@ -344,6 +420,21 @@ celljanus/
 3. **Idempotent steps**: Each step checks if output already exists and skips re-computation.
 4. **Gentle QC**: Unlike typical scRNA-seq pipelines, QC uses Q15/36bp thresholds to avoid discarding genuine microbial reads.
 5. **Dual output**: Produces both a host BAM (for gene expression analysis) and microbial abundance tables.
+6. **No `pysam` dependency**: All BAM operations use `samtools` via subprocess, avoiding the Windows build failures that `pysam` causes (requires POSIX `make` / `htslib` compilation).
+
+### Comparison with MetaScope (R)
+
+| Feature | MetaScope (R) | CellJanus (Python) |
+|---------|--------------|-------------------|
+| QC | Manual / external | fastp (integrated, gentle Q15) |
+| Aligner | Rbowtie2 / Rsubread (R wrappers) | Bowtie2 direct (C++, piped to samtools) |
+| BAM handling | Rsamtools (slow for large files) | samtools CLI (C, streaming) |
+| Microbial ID | Custom Bayesian EM in R | Kraken2 + Bracken (C++, memory-mapped) |
+| Speed (10 GB FASTQ) | Hours | ~30 min |
+| Memory | High (R data frames in memory) | Low (streaming + memory-mapping) |
+| CLI | R scripts | `celljanus` / `python -m celljanus` |
+| Visualisation | ggplot2 | matplotlib + seaborn (static, publication-quality) |
+| Windows support | Via R (native) | Python native + WSL2 for external tools |
 
 ---
 
