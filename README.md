@@ -82,6 +82,16 @@ Windows users must use **WSL2** or download pre-compiled binaries manually.
 > `samtools` via subprocess, avoiding the Windows build failures caused by `pysam`
 > (which requires POSIX `make` and `htslib` C compilation).
 
+### Installation Notes (Real-World Windows + WSL2)
+
+This is the exact setup we validated on Windows with WSL2 installed:
+
+- Windows conda env (`CellJanus`) installs the Python package and all Python deps successfully.
+- Windows native external tools are **not** available via bioconda; `fastp`/`bowtie2` require manual binaries and `kraken2`/`bracken` are WSL2-only.
+- WSL2 Ubuntu-24.04 + Miniforge3 works reliably for all external tools via bioconda.
+- WSL2 env (`CellJanus`) installs `fastp`, `bowtie2`, `samtools`, `kraken2`, `bracken` and runs `python -m celljanus check` cleanly.
+- Tests: Windows passes with QC tests skipped (no fastp); WSL2 passes all tests.
+
 ---
 
 ### Option A: Linux / macOS / WSL2 (Recommended)
