@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "celljanus"
+version = "0.1.0"
+description = "CellJanus: A Dual-Perspective Tool for Deconvolving Host Single-Cell and Microbial Transcriptomes"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Zhaoqing Wang"},
+]
+keywords = [
+    "bioinformatics", "metagenomics", "single-cell", "spatial-transcriptomics",
+    "microbiome", "host-microbe", "deconvolution",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "click>=8.1",
+    "rich>=13.0",
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "matplotlib>=3.7",
+    "seaborn>=0.12",
+    "biopython>=1.81",
+    "requests>=2.31",
+    "tqdm>=4.65",
+    "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "ruff>=0.1",
+]
+
+[project.scripts]
+celljanus = "celljanus.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/zhaoqing-wang/CellJanus"
+Repository = "https://github.com/zhaoqing-wang/CellJanus"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["celljanus*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
