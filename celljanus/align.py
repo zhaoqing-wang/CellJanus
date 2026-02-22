@@ -2,13 +2,13 @@
 Host genome alignment module.
 
 Aligns QC'd FASTQ reads against a host reference genome (typically hg38)
-using Bowtie2.  The module produces a sorted BAM file for downstream
-unmapped-read extraction.
+using Bowtie2.  The module produces a sorted BAM file and directly
+writes non-host (microbial) reads to FASTQ files.
 
 Key design choices:
   • ``--very-sensitive`` preset for thorough host removal.
-  • ``--no-unal`` flag to skip writing unaligned reads to the BAM
-    (they are extracted separately via samtools in the extract module).
+  • ``--un-conc-gz`` / ``--un-gz`` to capture unmapped reads directly
+    into compressed FASTQ — the standard approach for host subtraction.
   • Multi-threaded via ``-p`` for Bowtie2 and ``-@ `` for samtools sort.
   • Streams Bowtie2 SAM output directly into ``samtools sort`` via a pipe
     to avoid writing a large intermediate SAM file to disk.
@@ -33,9 +33,12 @@ def align_to_host(
     *,
     read2: Optional[Path] = None,
     cfg: Optional[CellJanusConfig] = None,
-) -> Path:
+) -> tuple[Path, Path | None, Path | None]:
     """
     Align reads to the host genome and produce a coordinate-sorted BAM.
+
+    Non-host (microbial candidate) reads are written directly by Bowtie2
+    using ``--un-conc-gz`` (paired) or ``--un-gz`` (single-end).
 
     Parameters
     ----------
@@ -52,7 +55,7 @@ def align_to_host(
 
     Returns
     -------
-    Path to the sorted BAM file (``<output_dir>/host_aligned.sorted.bam``).
+    (sorted_bam, unmapped_r1, unmapped_r2 | None)
     """
     log = get_logger()
     if cfg is None:
@@ -66,9 +69,13 @@ def align_to_host(
     sorted_bam = output_dir / "host_aligned.sorted.bam"
     stats_file = output_dir / "host_align_stats.txt"
 
+    # Unmapped read output paths
+    unmapped_r1 = output_dir / "unmapped_R1.fastq.gz"
+    unmapped_r2 = output_dir / "unmapped_R2.fastq.gz" if read2 else None
+
     if sorted_bam.exists():
         log.info(f"Sorted BAM already exists, skipping alignment: {sorted_bam.name}")
-        return sorted_bam
+        return sorted_bam, unmapped_r1, unmapped_r2
 
     threads = cfg.threads
 
@@ -86,8 +93,12 @@ def align_to_host(
     ]
     if read2 is not None:
         bt2_cmd.extend(["-1", str(read1), "-2", str(read2)])
+        # Capture unmapped pairs directly to compressed FASTQ
+        bt2_cmd.extend(["--un-conc-gz", str(output_dir / "unmapped_R%.fastq.gz")])
     else:
         bt2_cmd.extend(["-U", str(read1)])
+        # Capture unmapped reads directly to compressed FASTQ
+        bt2_cmd.extend(["--un-gz", str(unmapped_r1)])
 
     # Extra user flags
     if cfg.align_extra_args:
@@ -157,7 +168,14 @@ def align_to_host(
     )
 
     log.info(f"Sorted BAM: {sorted_bam}  ({file_size_human(sorted_bam)})")
-    return sorted_bam
+
+    # Log unmapped read stats
+    if unmapped_r1 and unmapped_r1.exists():
+        log.info(f"Unmapped R1: {unmapped_r1.name}  ({file_size_human(unmapped_r1)})")
+    if unmapped_r2 and unmapped_r2.exists():
+        log.info(f"Unmapped R2: {unmapped_r2.name}  ({file_size_human(unmapped_r2)})")
+
+    return sorted_bam, unmapped_r1, unmapped_r2
 
 
 def get_alignment_stats(stats_file: Path) -> dict:

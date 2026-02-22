@@ -223,7 +223,7 @@ def align_cmd(read1, read2, host_index, output_dir, threads):
         cfg.threads = threads
     get_logger(cfg.log_file)
 
-    bam = align_to_host(
+    bam, unmapped_r1, unmapped_r2 = align_to_host(
         Path(read1),
         Path(host_index),
         Path(output_dir),
@@ -231,6 +231,8 @@ def align_cmd(read1, read2, host_index, output_dir, threads):
         cfg=cfg,
     )
     console.print(f"[green]Alignment complete: {bam}[/green]")
+    if unmapped_r1 and unmapped_r1.exists():
+        console.print(f"[green]Unmapped reads: {unmapped_r1}[/green]")
 
 
 # ======================================================================

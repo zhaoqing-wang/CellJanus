@@ -118,7 +118,7 @@ class CellJanusConfig:
     # --- Alignment (Bowtie2 to host genome) ---
     aligner: str = "bowtie2"  # "bowtie2" or "star"
     host_index: Optional[Path] = None  # path to pre-built index prefix
-    align_extra_args: str = "--very-sensitive --no-unal"
+    align_extra_args: str = ""  # extra Bowtie2 flags (--very-sensitive already set)
     align_seed_length: int = 22
 
     # --- Microbial classification (Kraken2 + Bracken) ---

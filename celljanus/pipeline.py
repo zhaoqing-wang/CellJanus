@@ -23,7 +23,7 @@ from rich.table import Table
 from celljanus.align import align_to_host, get_alignment_stats
 from celljanus.classify import classify_and_quantify
 from celljanus.config import CellJanusConfig
-from celljanus.extract import count_bam_reads, extract_mapped_host, extract_unmapped
+from celljanus.extract import extract_mapped_host
 from celljanus.qc import QCReport, run_qc
 from celljanus.utils import file_size_human, fmt_elapsed, get_logger
 from celljanus.visualize import generate_all_plots, plot_qc_dashboard
@@ -139,7 +139,7 @@ def run_pipeline(
         read2_for_align = read2
 
     # ================================================================
-    # Step 2: Host Genome Alignment
+    # Step 2: Host Genome Alignment + Unmapped Extraction
     # ================================================================
     if not skip_align:
         log.info("[bold]Step 2/5: Host Genome Alignment (Bowtie2)[/bold]")
@@ -148,7 +148,7 @@ def run_pipeline(
                 "Host genome index not set. Use --host-index or 'celljanus download hg38' first."
             )
         align_dir = cfg.output_dir / "02_alignment"
-        sorted_bam = align_to_host(
+        sorted_bam, unmapped_r1, unmapped_r2 = align_to_host(
             read1_for_align,
             cfg.host_index,
             align_dir,
@@ -157,11 +157,14 @@ def run_pipeline(
         )
         result.host_bam = sorted_bam
 
-        # ---- Step 3: Extract unmapped (microbial) reads ----
-        log.info("[bold]Step 3/5: Extract Unmapped Reads (samtools)[/bold]")
-        extract_dir = cfg.output_dir / "03_unmapped"
-        unmapped_r1, unmapped_r2 = extract_unmapped(sorted_bam, extract_dir, paired=paired, cfg=cfg)
+        # Step 3: Unmapped reads are captured directly by Bowtie2
+        # (--un-conc-gz for PE, --un-gz for SE)
+        log.info("[bold]Step 3/5: Unmapped Read Extraction[/bold]")
         result.unmapped_r1, result.unmapped_r2 = unmapped_r1, unmapped_r2
+
+        # Count unmapped reads for logging
+        if unmapped_r1 and unmapped_r1.exists():
+            log.info(f"Unmapped reads (microbial candidates): {file_size_human(unmapped_r1)}")
 
         # Also produce a host-only BAM (for single-cell gene expression)
         host_mapped = extract_mapped_host(sorted_bam, align_dir, cfg=cfg)
@@ -183,17 +186,22 @@ def run_pipeline(
                 "'celljanus download kraken2-db' first."
             )
         classify_dir = cfg.output_dir / "04_classification"
-        cls_result = classify_and_quantify(
-            result.unmapped_r1,
-            cfg.kraken2_db,
-            classify_dir,
-            read2=result.unmapped_r2,
-            cfg=cfg,
-        )
-        result.kraken2_report = cls_result["kraken2_report_path"]
-        result.bracken_path = cls_result["bracken_path"]
-        result.bracken_df = cls_result["bracken_df"]
-        result.classify_summary = cls_result["summary"]
+
+        # Check if we have unmapped reads to classify
+        if result.unmapped_r1 is None or not result.unmapped_r1.exists():
+            log.warning("No unmapped reads found — skipping classification.")
+        else:
+            cls_result = classify_and_quantify(
+                result.unmapped_r1,
+                cfg.kraken2_db,
+                classify_dir,
+                read2=result.unmapped_r2,
+                cfg=cfg,
+            )
+            result.kraken2_report = cls_result["kraken2_report_path"]
+            result.bracken_path = cls_result["bracken_path"]
+            result.bracken_df = cls_result["bracken_df"]
+            result.classify_summary = cls_result["summary"]
     else:
         log.info("Skipping classification (--skip-classify)")
 

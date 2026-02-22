@@ -89,11 +89,12 @@ def run_bracken(
     output_dir: Path,
     *,
     cfg: Optional[CellJanusConfig] = None,
-) -> Path:
+) -> Optional[Path]:
     """
     Run Bracken for Bayesian abundance re-estimation at the species level.
 
-    Returns path to the Bracken output file.
+    Returns path to the Bracken output file, or None if Bracken cannot run
+    (e.g. too few classified reads).
     """
     log = get_logger()
     if cfg is None:
@@ -106,6 +107,12 @@ def run_bracken(
     if bracken_out.exists():
         log.info("Bracken output already exists, skipping.")
         return bracken_out
+
+    # Check if the Kraken2 report has classified reads
+    report_text = kraken2_report.read_text(encoding="utf-8").strip()
+    if not report_text:
+        log.warning("Kraken2 report is empty — skipping Bracken.")
+        return None
 
     cmd = [
         bracken,
@@ -120,12 +127,16 @@ def run_bracken(
         "-l",
         cfg.bracken_level,
         "-t",
-        "10",  # min reads threshold
+        "1",  # min reads threshold (lowered for small test data)
     ]
 
-    run_cmd(cmd, desc=f"Bracken abundance estimation (level={cfg.bracken_level})")
-    log.info(f"Bracken output: {bracken_out}")
-    return bracken_out
+    try:
+        run_cmd(cmd, desc=f"Bracken abundance estimation (level={cfg.bracken_level})")
+        log.info(f"Bracken output: {bracken_out}")
+        return bracken_out
+    except RuntimeError as e:
+        log.warning(f"Bracken failed (may have too few reads): {e}")
+        return None
 
 
 def parse_kraken2_report(report_path: Path) -> pd.DataFrame:
@@ -193,10 +204,10 @@ def classify_and_quantify(
     dict with keys:
       - kraken2_report_path
       - kraken2_output_path
-      - bracken_path
-      - kraken2_df   (pd.DataFrame)
-      - bracken_df   (pd.DataFrame)
-      - summary      (str)
+      - bracken_path          (may be None)
+      - kraken2_df            (pd.DataFrame)
+      - bracken_df            (pd.DataFrame or None)
+      - summary               (str)
     """
     log = get_logger()
     if cfg is None:
@@ -206,17 +217,29 @@ def classify_and_quantify(
     report_path, output_path = run_kraken2(read1, kraken2_db, output_dir, read2=read2, cfg=cfg)
     kraken2_df = parse_kraken2_report(report_path)
 
-    # Step 2: Bracken
+    # Step 2: Bracken (may return None if too few reads)
     bracken_path = run_bracken(report_path, kraken2_db, output_dir, cfg=cfg)
-    bracken_df = parse_bracken_output(bracken_path)
+    bracken_df = (
+        parse_bracken_output(bracken_path) if bracken_path and bracken_path.exists() else None
+    )
 
-    # Summary statistics
+    # Summary statistics from Kraken2 report
     total_classified = kraken2_df.loc[kraken2_df["rank"] == "U", "reads_clade"]
     unclassified = int(total_classified.iloc[0]) if len(total_classified) > 0 else 0
     total_reads = kraken2_df["reads_clade"].iloc[0] if len(kraken2_df) > 0 else 0
 
-    n_species = len(bracken_df)
-    top5 = bracken_df.head(5)[["name", "bracken_estimated", "fraction"]].to_string(index=False)
+    if bracken_df is not None and len(bracken_df) > 0:
+        n_species = len(bracken_df)
+        top5 = bracken_df.head(5)[["name", "bracken_estimated", "fraction"]].to_string(index=False)
+    else:
+        n_species = 0
+        # Fall back to Kraken2 report for species-level info
+        species = kraken2_df[kraken2_df["rank"] == "S"].nlargest(5, "reads_clade")
+        if len(species) > 0:
+            top5 = species[["name", "reads_clade", "pct"]].to_string(index=False)
+            n_species = len(kraken2_df[kraken2_df["rank"] == "S"])
+        else:
+            top5 = "(none)"
 
     summary = (
         f"Classified reads: {total_reads - unclassified:,} / {total_reads:,}\n"

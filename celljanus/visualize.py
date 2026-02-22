@@ -256,13 +256,16 @@ def plot_qc_dashboard(
     ax = axes[0]
     ax.axis("off")
     ax.set_title("Quality Control", fontsize=13, fontweight="bold")
+    reads_before = qc_report.get("total_reads_before", 0)
+    reads_after = qc_report.get("total_reads_after", 0)
+    retained_pct = 100.0 * reads_after / reads_before if reads_before > 0 else 0.0
     qc_text = (
-        f"Reads before QC:  {qc_report.get('total_reads_before', 'N/A'):>12,}\n"
-        f"Reads after QC:   {qc_report.get('total_reads_after', 'N/A'):>12,}\n"
-        f"Retained:         {qc_report.get('reads_retained_pct', 'N/A'):>11.1f}%\n"
+        f"Reads before QC:  {reads_before:>12,}\n"
+        f"Reads after QC:   {reads_after:>12,}\n"
+        f"Retained:         {retained_pct:>11.1f}%\n"
         f"Q30 before:       {qc_report.get('q30_rate_before', 0):>11.2%}\n"
         f"Q30 after:        {qc_report.get('q30_rate_after', 0):>11.2%}\n"
-        f"Adapters trimmed: {qc_report.get('adapter_trimmed_reads', 'N/A'):>12,}"
+        f"Adapters trimmed: {qc_report.get('adapter_trimmed_reads', 0):>12,}"
     )
     ax.text(
         0.1,
