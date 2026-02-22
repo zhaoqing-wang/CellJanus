@@ -10,7 +10,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: celljanus:0.1.0
+    image: celljanus:0.1.1
     volumes:
       - ${DATA_DIR:-./data}:/data
     working_dir: /data

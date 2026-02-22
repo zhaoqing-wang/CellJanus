@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "celljanus"
-version = "0.1.0"
+version = "0.1.1"
 description = "CellJanus: A Dual-Perspective Tool for Deconvolving Host Single-Cell and Microbial Transcriptomes"
 readme = "README.md"
 license = {text = "MIT"}
