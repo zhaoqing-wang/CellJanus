@@ -445,6 +445,7 @@ def run_cmd(
     tbl = Table(title="Pipeline Results", show_lines=True)
     tbl.add_column("Output", style="bold cyan")
     tbl.add_column("Path", style="green")
+    tbl.add_column("Size", style="dim")
     for label, p in [
         ("QC'd reads", result.qc_r1),
         ("Host BAM", result.host_bam),
@@ -452,10 +453,31 @@ def run_cmd(
         ("Kraken2 report", result.kraken2_report),
         ("Bracken output", result.bracken_path),
     ]:
-        if p:
-            tbl.add_row(label, str(p))
+        if p and Path(p).exists():
+            from celljanus.utils import file_size_human
+
+            tbl.add_row(label, str(p), file_size_human(Path(p)))
+        elif p:
+            tbl.add_row(label, str(p), "")
     if result.plots:
-        tbl.add_row("Plots", f"{len(result.plots)} files in {output_dir}/05_visualisation/")
+        png_count = sum(1 for p in result.plots if str(p).endswith(".png"))
+        pdf_count = sum(1 for p in result.plots if str(p).endswith(".pdf"))
+        tbl.add_row(
+            "Plots",
+            f"{output_dir}/05_visualisation/",
+            f"{png_count} PNG + {pdf_count} PDF",
+        )
+
+    # Tables
+    tables_dir = Path(output_dir) / "06_tables"
+    if tables_dir.exists():
+        table_files = sorted(tables_dir.glob("*.csv"))
+        tbl.add_row(
+            "Result tables",
+            str(tables_dir),
+            f"{len(table_files)} CSV files",
+        )
+
     console.print(tbl)
 
 

@@ -104,21 +104,17 @@ celljanus run \
 
 ### Expected Results
 
-The pipeline completes in **~3 seconds** and produces:
+The pipeline completes in **~4 seconds** and produces:
 
-```
-┃ Step                  ┃ Result                                         ┃
-│ QC (fastp)            │ 1,000 → 900 pairs (90% retained)              │
-│                       │ Q20: 88% → 98%                                │
-│ Alignment (Bowtie2)   │ 66.39% host alignment rate                    │
-│ Unmapped extraction   │ ~300 pairs → microbial candidates             │
-│ Kraken2               │ 300 classified (33.33%), 600 unclassified     │
-│ Bracken               │ 3 species detected:                           │
-│                       │   S. aureus    38.7% (116 reads)              │
-│                       │   K. pneumoniae 31.3% (94 reads)              │
-│                       │   E. coli      30.0% (90 reads)              │
-│ Visualisation         │ 4 plots (bar, pie, heatmap, dashboard)        │
-```
+| Step | Result |
+|------|--------|
+| QC (fastp) | 1,000 → 900 pairs (90% retained), Q20: 88% → 98% |
+| Alignment (Bowtie2) | 66.39% host alignment rate |
+| Unmapped extraction | ~600 reads → microbial candidates |
+| Kraken2 | 300 classified (33.33%), 600 unclassified |
+| Bracken | 3 species: *S. aureus* 38.7%, *K. pneumoniae* 31.3%, *E. coli* 30.0% |
+| Visualisation | 4 plots × 2 formats (PNG + PDF) |
+| Result tables | 3 CSV files (summary, abundance, manifest) |
 
 ### Output Files
 
@@ -127,7 +123,7 @@ test_results/
 ├── 01_qc/
 │   ├── reads_R1_qc.fastq.gz         # Trimmed R1
 │   ├── reads_R2_qc.fastq.gz         # Trimmed R2
-│   ├── reads_R1_fastp.json           # QC metrics
+│   ├── reads_R1_fastp.json           # QC metrics (JSON)
 │   └── reads_R1_fastp.html           # Interactive QC report
 ├── 02_alignment/
 │   ├── host_aligned.sorted.bam       # All aligned reads
@@ -142,12 +138,38 @@ test_results/
 │   ├── kraken2_output.txt            # Per-read classification
 │   └── bracken_S.txt                 # Species-level abundance
 ├── 05_visualisation/plots/
-│   ├── abundance_bar.png             # Top species bar chart
-│   ├── abundance_pie.png             # Community donut chart
-│   ├── abundance_heatmap.png         # Abundance heatmap
-│   └── pipeline_dashboard.png        # Summary dashboard
+│   ├── abundance_bar.png / .pdf      # Top species bar chart
+│   ├── abundance_pie.png / .pdf      # Community donut chart
+│   ├── abundance_heatmap.png / .pdf  # Abundance heatmap
+│   └── pipeline_dashboard.png / .pdf # Summary dashboard
+├── 06_tables/
+│   ├── pipeline_summary.csv          # QC / alignment / classification metrics
+│   ├── species_abundance.csv         # Species, taxonomy ID, reads, fraction
+│   └── output_manifest.csv           # All output files with sizes
 └── celljanus.log                     # Full pipeline log
 ```
+
+### Result Tables
+
+All numeric results are exported as tidy CSV for downstream analysis:
+
+**`pipeline_summary.csv`** — one row per metric:
+
+| Step | Metric | Value |
+|------|--------|-------|
+| QC | reads_before | 2000 |
+| QC | reads_after | 1800 |
+| QC | retained_pct | 90.0 |
+| Alignment | alignment_rate | 66.39% |
+| Classification | species_detected | 3 |
+
+**`species_abundance.csv`** — one row per species:
+
+| name | taxonomy_id | bracken_estimated | fraction_pct |
+|------|-------------|-------------------|--------------|
+| Staphylococcus aureus | 1280 | 116 | 38.67 |
+| Klebsiella pneumoniae | 573 | 94 | 31.33 |
+| Escherichia coli | 562 | 90 | 30.00 |
 
 ### Run Individual Steps
 
@@ -338,7 +360,7 @@ Kraken2+Bracken database from 3 bacterial 16S sequences.
 ## Citation
 
 ```
-Wang Z (2026). CellJanus: A Dual-Perspective Tool for Deconvolving Host Single-Cell and Microbial Transcriptomes. Python package version 0.1.2.
+Wang Z (2026). CellJanus: A Dual-Perspective Tool for Deconvolving Host Single-Cell and Microbial Transcriptomes. Python package version 0.1.3.
 https://github.com/zhaoqing-wang/CellJanus
 ```
 

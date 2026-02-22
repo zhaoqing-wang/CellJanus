@@ -31,6 +31,93 @@ from celljanus.visualize import generate_all_plots, plot_qc_dashboard
 console = Console(stderr=True)
 
 
+# ---------------------------------------------------------------------------
+# Result table writer
+# ---------------------------------------------------------------------------
+
+
+def _write_result_tables(result: "PipelineResult", cfg: CellJanusConfig) -> None:
+    """Write pipeline results as CSV/TSV tables for programmatic access."""
+    log = get_logger()
+    tables_dir = cfg.output_dir / "06_tables"
+    tables_dir.mkdir(parents=True, exist_ok=True)
+
+    # --- 1. Pipeline summary ---
+    rows = []
+    if result.qc_report is not None:
+        qr = result.qc_report
+        total_before = getattr(qr, "total_reads_before", 0)
+        total_after = getattr(qr, "total_reads_after", 0)
+        retained_pct = 100.0 * total_after / total_before if total_before else 0.0
+        rows.extend(
+            [
+                ("QC", "reads_before", total_before),
+                ("QC", "reads_after", total_after),
+                ("QC", "retained_pct", round(retained_pct, 2)),
+                ("QC", "q20_before", getattr(qr, "q20_rate_before", "")),
+                ("QC", "q20_after", getattr(qr, "q20_rate_after", "")),
+                ("QC", "q30_before", getattr(qr, "q30_rate_before", "")),
+                ("QC", "q30_after", getattr(qr, "q30_rate_after", "")),
+                ("QC", "gc_content", getattr(qr, "gc_content", "")),
+                ("QC", "duplication_rate", getattr(qr, "duplication_rate", "")),
+            ]
+        )
+
+    if result.host_bam is not None:
+        stats_file = cfg.output_dir / "02_alignment" / "host_align_stats.txt"
+        if stats_file.exists():
+            a = get_alignment_stats(stats_file)
+            total_reads = a.get("total_reads", 0)
+            unmapped = a.get("aligned_0_times", 0)
+            rows.extend(
+                [
+                    ("Alignment", "total_reads", total_reads),
+                    ("Alignment", "host_mapped", total_reads - unmapped),
+                    ("Alignment", "unmapped", unmapped),
+                    ("Alignment", "alignment_rate", a.get("overall_alignment_rate", "")),
+                ]
+            )
+
+    if result.bracken_df is not None:
+        n_species = len(result.bracken_df)
+        total_classified = result.bracken_df["bracken_estimated"].sum()
+        rows.extend(
+            [
+                ("Classification", "species_detected", n_species),
+                ("Classification", "classified_reads", int(total_classified)),
+            ]
+        )
+
+    rows.append(("Pipeline", "elapsed_seconds", round(result.elapsed_seconds, 2)))
+
+    summary_df = pd.DataFrame(rows, columns=["Step", "Metric", "Value"])
+    summary_path = tables_dir / "pipeline_summary.csv"
+    summary_df.to_csv(summary_path, index=False)
+    log.info(f"Saved summary table → {summary_path}")
+
+    # --- 2. Bracken abundance table (clean) ---
+    if result.bracken_df is not None and len(result.bracken_df) > 0:
+        abundance_path = tables_dir / "species_abundance.csv"
+        export = result.bracken_df.copy()
+        export["fraction_pct"] = (export["fraction"] * 100).round(2)
+        cols = ["name", "taxonomy_id", "bracken_estimated", "fraction_pct"]
+        cols = [c for c in cols if c in export.columns]
+        export[cols].to_csv(abundance_path, index=False)
+        log.info(f"Saved abundance table → {abundance_path}")
+
+    # --- 3. Output file manifest ---
+    manifest_rows = []
+    for d in sorted(cfg.output_dir.rglob("*")):
+        if d.is_file() and "tmp" not in str(d):
+            rel = d.relative_to(cfg.output_dir)
+            size = d.stat().st_size
+            manifest_rows.append((str(rel), size, file_size_human(d)))
+    manifest_df = pd.DataFrame(manifest_rows, columns=["File", "Bytes", "Size"])
+    manifest_path = tables_dir / "output_manifest.csv"
+    manifest_df.to_csv(manifest_path, index=False)
+    log.info(f"Saved output manifest → {manifest_path}")
+
+
 @dataclass
 class PipelineResult:
     """Container for all pipeline outputs."""
@@ -220,16 +307,21 @@ def run_pipeline(
             stats_file = cfg.output_dir / "02_alignment" / "host_align_stats.txt"
             if stats_file.exists():
                 align_stats = get_alignment_stats(stats_file)
-            dashboard = plot_qc_dashboard(
+            dashboard_paths = plot_qc_dashboard(
                 qc_report=result.qc_report.__dict__,
                 align_stats=align_stats,
                 classify_summary=result.classify_summary,
-                output_path=vis_dir / "plots" / f"pipeline_dashboard.{cfg.plot_format}",
+                output_path=vis_dir / "plots" / "pipeline_dashboard.png",
                 cfg=cfg,
             )
-            result.plots.append(dashboard)
+            result.plots.extend(dashboard_paths)
     else:
         log.info("Skipping visualisation")
+
+    # ================================================================
+    # Write result summary tables
+    # ================================================================
+    _write_result_tables(result, cfg)
 
     # ================================================================
     # Done

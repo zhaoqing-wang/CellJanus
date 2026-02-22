@@ -5,6 +5,26 @@ All notable changes to CellJanus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] — 2026-02-22
+
+### Added
+
+- **Dual-format plot output**: every plot is now saved as both PNG (raster, 300 dpi) and PDF (vector) for publication use.
+- **Result tables** in `06_tables/`:
+  - `pipeline_summary.csv` — QC, alignment, and classification metrics (one row per metric).
+  - `species_abundance.csv` — clean species table with taxonomy ID and fraction percentage.
+  - `output_manifest.csv` — complete file inventory with byte sizes.
+- Pipeline summary table in CLI now shows file sizes and plot/table counts.
+
+### Changed
+
+- Publication-quality plot styling: global `rcParams` for consistent fonts, spines, and layout.
+- Bar chart: value labels with read counts and percentages displayed on bars.
+- Donut chart: moved species labels to a side legend; total read count shown in centre.
+- Heatmap: wider figure, rotated y-labels, improved colour bar.
+- Dashboard: gridspec layout with colour-coded panels (blue/green/red) and structured key-value formatting.
+- Version bumped to 0.1.3.
+
 ## [0.1.2] — 2026-02-23
 
 ### Fixed
