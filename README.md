@@ -1,16 +1,19 @@
-# CellJanus: A Dual-Perspective Tool for Deconvolving Host Single-Cell and Microbial Transcriptomes
+# CellJanus
+
+**A Dual-Perspective Tool for Deconvolving Host Single-Cell and Microbial Transcriptomes**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://hub.docker.com/)
 
 <p align="center">
-  <strong>Separate host from microbe in single-cell & spatial transcriptomics data</strong>
-</p>
-
-<p align="center">
-  <a href="#installation">Installation</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#pipeline-overview">Pipeline</a> •
-  <a href="#commands">Commands</a> •
-  <a href="#performance">Performance</a> •
-  <a href="#faq">FAQ</a>
+  <a href="#highlights">Highlights</a> &bull;
+  <a href="#pipeline-overview">Pipeline</a> &bull;
+  <a href="#installation">Installation</a> &bull;
+  <a href="#quick-start">Quick Start</a> &bull;
+  <a href="#commands">Commands</a> &bull;
+  <a href="#performance">Performance</a> &bull;
+  <a href="#citation">Citation</a>
 </p>
 
 ---
@@ -19,13 +22,12 @@
 
 | Feature | Description |
 |---------|-------------|
-| **Dual-perspective deconvolution** | Simultaneously extracts host gene expression (for scRNA-seq / spatial) and microbial abundance profiles from the same FASTQ |
+| **Dual-perspective deconvolution** | Simultaneously extracts host gene expression and microbial abundance from the same FASTQ |
 | **CellRanger-like CLI** | Simple `celljanus run` command with sensible defaults |
-| **Gentle QC** | fastp with permissive settings (Q15 / 36 bp) preserves low-abundance microbial reads that aggressive filters discard |
-| **High-performance external tools** | Python orchestrates C/C++ tools: Bowtie2, samtools, Kraken2, Bracken |
-| **Memory-efficient** | Designed to handle 50 GB FASTQ on a 32 GB laptop — streaming I/O, memory-mapped Kraken2 DB, chunked FASTQ processing |
-| **Multi-threaded** | All CPU-intensive steps use `--threads` for parallel execution |
-| **Progress & ETA** | Rich console output with real-time progress bars and elapsed time |
+| **Gentle QC** | fastp with permissive settings (Q15 / 36 bp) preserves low-abundance microbial reads |
+| **High-performance tools** | Python orchestrates C/C++ backends: Bowtie2, samtools, Kraken2, Bracken |
+| **Memory-efficient** | Handles 50 GB FASTQ on a 32 GB laptop — streaming I/O, memory-mapped DBs |
+| **Docker-ready** | One command to build a fully reproducible environment |
 | **Publication-quality plots** | Bar charts, donut plots, heatmaps of microbial abundance |
 
 ---
@@ -33,157 +35,126 @@
 ## Pipeline Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     CellJanus Pipeline                          │
-│                                                                 │
-│  ┌──────────┐   ┌──────────┐   ┌───────────┐   ┌───────────┐  │
-│  │  fastp   │──▶│ Bowtie2  │──▶│ samtools  │──▶│  Kraken2  │  │
-│  │  (QC)    │   │ (align   │   │ (extract  │   │ + Bracken │  │
-│  │          │   │  hg38)   │   │ unmapped) │   │ (classify)│  │
-│  └──────────┘   └──────────┘   └───────────┘   └───────────┘  │
-│       │              │              │                │          │
-│       ▼              ▼              ▼                ▼          │
-│  QC report     Host BAM      Microbial FASTQ   Abundance CSV   │
-│  (HTML+JSON)   (scRNA-seq)   (unaligned reads) + Plots         │
-└─────────────────────────────────────────────────────────────────┘
+FASTQ ──▶ fastp (QC) ──▶ Bowtie2 (align hg38) ──▶ samtools (extract unmapped)
+                                                         │
+                                 ┌───────────────────────┘
+                                 ▼
+                          Kraken2 + Bracken ──▶ Abundance tables + Plots
 ```
-
-### Step-by-step
 
 | Step | Tool | Purpose | Output |
 |------|------|---------|--------|
-| **1. QC** | [fastp](https://github.com/OpenGene/fastp) | Adapter trimming, poly-G removal, quality filtering (gentle Q15) | `*_qc.fastq.gz`, HTML/JSON report |
-| **2. Host Alignment** | [Bowtie2](https://github.com/BenLangmead/bowtie2) | Align reads to human genome hg38 | `host_aligned.sorted.bam` |
-| **3. Extract Unmapped** | [samtools](https://github.com/samtools/samtools) | Separate host-mapped and unmapped (microbial candidate) reads | `unmapped_R1.fastq.gz`, `host_mapped.sorted.bam` |
-| **4. Classify** | [Kraken2](https://github.com/DerrickWood/kraken2) + [Bracken](https://github.com/jenniferlu717/Bracken) | Taxonomic classification and Bayesian abundance re-estimation | `kraken2_report.txt`, `bracken_S.txt` |
-| **5. Visualize** | matplotlib + seaborn | Abundance bar charts, donut plots, heatmaps | PNG/PDF/SVG plots |
+| 1. QC | [fastp](https://github.com/OpenGene/fastp) | Adapter trimming, quality filtering (gentle Q15) | `*_qc.fastq.gz`, HTML/JSON report |
+| 2. Align | [Bowtie2](https://github.com/BenLangmead/bowtie2) | Align reads to human genome (hg38) | `host_aligned.sorted.bam` |
+| 3. Extract | [samtools](https://github.com/samtools/samtools) | Separate host-mapped and unmapped reads | `unmapped_R1.fastq.gz` |
+| 4. Classify | [Kraken2](https://github.com/DerrickWood/kraken2) + [Bracken](https://github.com/jenniferlu717/Bracken) | Taxonomic classification + abundance re-estimation | `bracken_S.txt` |
+| 5. Visualize | matplotlib + seaborn | Abundance bar charts, donut plots, heatmaps | PNG/PDF/SVG |
 
 ---
 
 ## Installation
 
-### Platform Support
+### Option A: Docker (Recommended — Any Platform)
 
-CellJanus's Python package runs on all platforms, but the external bioinformatics tools
-(fastp, Bowtie2, samtools, Kraken2, Bracken) are **Linux/macOS-only** via bioconda.
-Windows users must use **WSL2** or download pre-compiled binaries manually.
-
-| Component | Linux | macOS | Windows (native) | Windows (WSL2) |
-|-----------|:-----:|:-----:|:-----------------:|:--------------:|
-| CellJanus (Python) | ✅ | ✅ | ✅ | ✅ |
-| fastp | ✅ conda | ✅ conda | ⚠️ binary only | ✅ conda |
-| Bowtie2 | ✅ conda | ✅ conda | ⚠️ binary only | ✅ conda |
-| samtools | ✅ conda | ✅ conda | ⚠️ MSYS2 / binary | ✅ conda |
-| Kraken2 | ✅ conda | ✅ conda | ❌ WSL2 required | ✅ conda |
-| Bracken | ✅ conda | ✅ conda | ❌ WSL2 required | ✅ conda |
-| pysam | ✅ | ✅ | ❌ build fails | ✅ |
-
-> **Note**: `pysam` is intentionally **not** a dependency. All BAM operations use
-> `samtools` via subprocess, avoiding the Windows build failures caused by `pysam`
-> (which requires POSIX `make` and `htslib` C compilation).
-
-### Installation Notes (Real-World Windows + WSL2)
-
-This is the exact setup we validated on Windows with WSL2 installed:
-
-- Windows conda env (`CellJanus`) installs the Python package and all Python deps successfully.
-- Windows native external tools are **not** available via bioconda; `fastp`/`bowtie2` require manual binaries and `kraken2`/`bracken` are WSL2-only.
-- WSL2 Ubuntu-24.04 + Miniforge3 works reliably for all external tools via bioconda.
-- WSL2 env (`CellJanus`) installs `fastp`, `bowtie2`, `samtools`, `kraken2`, `bracken` and runs `python -m celljanus check` cleanly.
-- Tests: Windows passes with QC tests skipped (no fastp); WSL2 passes all tests.
-
----
-
-### Option A: Linux / macOS / WSL2 (Recommended)
-
-One-step install — all tools via bioconda:
+Docker provides a fully self-contained environment with all tools pre-installed.
+No conda or manual binary downloads needed.
 
 ```bash
-# Create environment with all external tools + Python
+# Build the image
+git clone https://github.com/zhaoqing-wang/CellJanus.git
+cd CellJanus
+docker build -t celljanus:0.1.0 .
+
+# Verify
+docker run --rm celljanus:0.1.0 celljanus check
+```
+
+To run the pipeline, mount your data directory:
+
+```bash
+docker run --rm -v /path/to/data:/data celljanus:0.1.0 \
+    celljanus run \
+        --read1 /data/sample_R1.fastq.gz \
+        --read2 /data/sample_R2.fastq.gz \
+        --host-index /data/refs/bowtie2_index/GRCh38_noalt_as \
+        --kraken2-db /data/refs/standard_8 \
+        --output-dir /data/results \
+        --threads 8
+```
+
+Or use **docker compose**:
+
+```bash
+DATA_DIR=/path/to/data docker compose run --rm celljanus \
+    celljanus run --read1 /data/R1.fastq.gz --read2 /data/R2.fastq.gz ...
+```
+
+### Option B: Conda — Linux / macOS / WSL2
+
+One-step install via bioconda:
+
+```bash
+# Create environment with all external tools
 conda create -n CellJanus -c bioconda -c conda-forge \
-    fastp bowtie2 samtools kraken2 bracken python=3.11
+    python=3.11 \
+    fastp=1.1.0 \
+    bowtie2=2.5.4 \
+    samtools=1.23 \
+    kraken2=2.17.1 \
+    bracken=3.1
+
 conda activate CellJanus
 
 # Install CellJanus
+git clone https://github.com/zhaoqing-wang/CellJanus.git
 cd CellJanus
-pip install -e .       # editable (development)
-# or: pip install .    # standard install
+pip install .
 ```
 
-### Option B: Windows Native (Two-Step)
+### Option C: Windows Native (Two-Step)
 
-bioconda packages do **not** exist for `win-64`. You must install the Python package
-and the external tools separately:
+bioconda packages are Linux/macOS only. On Windows native, install the Python
+package first, then add external tool binaries to your PATH manually.
 
-**Step 1 — Python environment + CellJanus**
+**Step 1 — Python package**
 
 ```bash
 conda create -n CellJanus python=3.11
 conda activate CellJanus
+git clone https://github.com/zhaoqing-wang/CellJanus.git
 cd CellJanus
-pip install -e .
+pip install .
 ```
 
-**Step 2 — External tools (manual download)**
+**Step 2 — External tools**
 
-Download pre-compiled binaries and add them to your system `PATH`:
+| Tool | Source | Notes |
+|------|--------|-------|
+| fastp | [GitHub Releases](https://github.com/OpenGene/fastp/releases) | `fastp.exe` available |
+| Bowtie2 | [GitHub Releases](https://github.com/BenLangmead/bowtie2/releases) | MinGW `.exe` available |
+| samtools | [MSYS2](https://packages.msys2.org/package/mingw-w64-x86_64-samtools) | No official Windows binary |
+| Kraken2 | **WSL2 only** | No Windows build |
+| Bracken | **WSL2 only** | No Windows build |
 
-| Tool | Windows binary | Notes |
-|------|---------------|-------|
-| **fastp** | [GitHub Releases](https://github.com/OpenGene/fastp/releases) — `fastp.exe` | ✅ Native `.exe` available |
-| **Bowtie2** | [GitHub Releases](https://github.com/BenLangmead/bowtie2/releases) — `bowtie2-*-mingw-x86_64.zip` | ✅ Native `.exe` available |
-| **samtools** | [MSYS2](https://packages.msys2.org/package/mingw-w64-x86_64-samtools) or build via MSYS2 | ⚠️ No official Windows binary |
-| **Kraken2** | ❌ No Windows build — use WSL2 or Docker | Linux-only (POSIX) |
-| **Bracken** | ❌ No Windows build — use WSL2 or Docker | Linux-only (POSIX) |
-
-> **Tip**: For full pipeline functionality on Windows, **WSL2 is strongly recommended**.
-> Install [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install), then follow
-> Option A inside your WSL2 Linux distribution.
-
-### Option C: Docker (Any Platform)
-
-```bash
-# Coming soon — Dockerfile in roadmap
-```
-
----
+> **Tip:** For full pipeline functionality on Windows, use **WSL2** (Option B inside
+> your WSL2 distribution) or **Docker** (Option A).
 
 ### Verify Installation
 
 ```bash
 celljanus check
-# or, if 'celljanus' is not on PATH:
-python -m celljanus check
+# or: python -m celljanus check
 ```
-
-This prints a table showing which external tools are detected and their versions.
 
 <details>
 <summary><strong>Troubleshooting</strong></summary>
 
-**`celljanus` command not found after `pip install`**
-
-pip may install the entry point to a directory not on your PATH. Use:
-```bash
-python -m celljanus check
-```
-Or add the conda environment's `Scripts/` directory to your PATH.
-
-**`pysam` / `htslib` build errors**
-
-CellJanus does **not** require `pysam`. If you see `pysam` errors from another
-package, they are unrelated to CellJanus. All BAM operations use `samtools` CLI.
-
-**`conda install -c bioconda fastp` fails on Windows**
-
-bioconda packages are built for Linux and macOS only. On Windows, download
-the binary from the tool's GitHub Releases page or use WSL2.
-
-**`ERROR: Could not build wheels for pysam`**
-
-This error occurs if you manually try to install `pysam` — it requires POSIX
-`make` and `htslib` compilation, which is not available on Windows.
-CellJanus deliberately avoids this dependency.
+| Problem | Solution |
+|---------|----------|
+| `celljanus` command not found | Use `python -m celljanus check`, or add conda `Scripts/` to PATH |
+| `pysam` / `htslib` build errors | CellJanus does **not** depend on `pysam` — unrelated |
+| `conda install fastp` fails on Windows | bioconda is Linux/macOS only — use manual binary or WSL2 |
+| STAR missing in `celljanus check` | STAR is optional (roadmap), not required for the core pipeline |
 
 </details>
 
@@ -194,10 +165,10 @@ CellJanus deliberately avoids this dependency.
 ### 1. Download Reference Data
 
 ```bash
-# Download human genome hg38 + pre-built Bowtie2 index (~5 GB)
+# Human genome hg38 + pre-built Bowtie2 index (~5 GB)
 celljanus download hg38 --output-dir ./refs
 
-# Download Kraken2 database (~8 GB, fits in 32 GB RAM)
+# Kraken2 database (~8 GB, fits in 32 GB RAM)
 celljanus download kraken2 --output-dir ./refs --db-name standard_8
 ```
 
@@ -218,50 +189,44 @@ celljanus run \
 ```
 results/
 ├── 01_qc/
-│   ├── sample_R1_qc.fastq.gz        # QC'd reads
-│   ├── sample_R1_fastp.json          # Detailed QC metrics
-│   └── sample_R1_fastp.html          # Interactive QC report
+│   ├── sample_R1_qc.fastq.gz
+│   ├── sample_R1_fastp.json
+│   └── sample_R1_fastp.html
 ├── 02_alignment/
-│   ├── host_aligned.sorted.bam       # Host-aligned reads (for scRNA-seq)
-│   ├── host_aligned.sorted.bam.bai   # BAM index
-│   ├── host_mapped.sorted.bam        # Host-only reads
-│   └── host_align_stats.txt          # Bowtie2 alignment statistics
+│   ├── host_aligned.sorted.bam
+│   ├── host_aligned.sorted.bam.bai
+│   └── host_align_stats.txt
 ├── 03_unmapped/
-│   └── unmapped_R1.fastq.gz          # Reads NOT in host → microbial candidates
+│   └── unmapped_R1.fastq.gz
 ├── 04_classification/
-│   ├── kraken2_report.txt            # Kraken2 taxonomic report
-│   ├── kraken2_output.txt            # Per-read classification
-│   └── bracken_S.txt                 # Species-level abundance (Bracken)
+│   ├── kraken2_report.txt
+│   ├── kraken2_output.txt
+│   └── bracken_S.txt
 ├── 05_visualisation/
 │   └── plots/
-│       ├── abundance_bar.png         # Top species bar chart
-│       ├── abundance_pie.png         # Community composition donut
-│       ├── abundance_heatmap.png     # Abundance heatmap (log scale)
-│       └── pipeline_dashboard.png    # Combined QC + alignment + classification summary
-└── celljanus.log                     # Full pipeline log
+│       ├── abundance_bar.png
+│       ├── abundance_pie.png
+│       ├── abundance_heatmap.png
+│       └── pipeline_dashboard.png
+└── celljanus.log
 ```
 
 ---
 
 ## Commands
 
-### `celljanus run` — Full Pipeline
+| Command | Purpose |
+|---------|---------|
+| `celljanus run` | Full pipeline (QC → Align → Extract → Classify → Visualize) |
+| `celljanus qc` | Quality control only |
+| `celljanus align` | Host alignment only |
+| `celljanus extract` | Extract unmapped reads from BAM |
+| `celljanus classify` | Microbial classification only |
+| `celljanus visualize` | Generate plots from Bracken output |
+| `celljanus download` | Download reference data (hg38, Kraken2 DB) |
+| `celljanus check` | Verify external tool availability |
 
-```bash
-celljanus run \
-    --read1 R1.fastq.gz \
-    --read2 R2.fastq.gz \
-    --host-index /path/to/bt2_index_prefix \
-    --kraken2-db /path/to/kraken2_db \
-    --output-dir ./output \
-    --threads 8 \
-    --max-memory 24 \
-    --min-quality 15 \
-    --min-length 36 \
-    --confidence 0.05 \
-    --bracken-level S \
-    --plot-format png
-```
+### `celljanus run` Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -270,9 +235,9 @@ celljanus run \
 | `--host-index` | *required* | Bowtie2 index prefix for hg38 |
 | `--kraken2-db` | *required* | Kraken2 database directory |
 | `--output-dir` | `celljanus_output` | Output directory |
-| `--threads` | auto (CPUs-2) | Number of threads |
+| `--threads` | auto (CPUs − 2) | Number of threads |
 | `--max-memory` | 80% of RAM | Max memory usage (GB) |
-| `--min-quality` | 15 | Phred quality threshold (gentle) |
+| `--min-quality` | 15 | Phred quality threshold |
 | `--min-length` | 36 | Minimum read length after trim |
 | `--confidence` | 0.05 | Kraken2 confidence threshold |
 | `--bracken-level` | S | Taxonomic level: D/P/C/O/F/G/S |
@@ -280,137 +245,9 @@ celljanus run \
 | `--skip-classify` | — | Skip classification step |
 | `--skip-visualize` | — | Skip visualisation step |
 
-### `celljanus download` — Download Reference Data
-
-```bash
-# Human genome
-celljanus download hg38 --output-dir ./refs
-
-# Kraken2 databases (choose one)
-celljanus download kraken2 --output-dir ./refs --db-name standard_8     # 8 GB, recommended
-celljanus download kraken2 --output-dir ./refs --db-name pluspfp_8      # 8 GB + protozoa/fungi/plant
-celljanus download kraken2 --output-dir ./refs --db-name minikraken2_8gb # Legacy 8 GB
-
-# RefSeq genomes for custom DB
-celljanus download refseq --taxon bacteria --output-dir ./refs
-```
-
-### `celljanus qc` — Quality Control Only
-
-```bash
-celljanus qc --read1 R1.fastq.gz --read2 R2.fastq.gz --output-dir ./qc_out
-```
-
-### `celljanus align` — Host Alignment Only
-
-```bash
-celljanus align --read1 qc_R1.fastq.gz --host-index ./refs/bt2/hg38 --output-dir ./align_out
-```
-
-### `celljanus extract` — Extract Unmapped Reads
-
-```bash
-celljanus extract --bam host_aligned.sorted.bam --output-dir ./unmapped_out --paired
-```
-
-### `celljanus classify` — Microbial Classification Only
-
-```bash
-celljanus classify \
-    --read1 unmapped_R1.fastq.gz \
-    --kraken2-db ./refs/standard_8 \
-    --output-dir ./classify_out
-```
-
-### `celljanus visualize` — Generate Plots
-
-```bash
-celljanus visualize --bracken-file bracken_S.txt --output-dir ./plots --top-n 25
-```
-
-### `celljanus check` — Verify Tool Availability
-
-```bash
-celljanus check
-```
-
 ---
 
-## Performance Considerations
-
-### Memory Optimization for 32 GB Laptops
-
-| Component | Memory Usage | Strategy |
-|-----------|-------------|----------|
-| **fastp** | < 1 GB | Streaming I/O, negligible memory |
-| **Bowtie2 + hg38** | ~3.5 GB | Index is memory-mapped |
-| **samtools** | ~1-2 GB | Streaming BAM processing |
-| **Kraken2 (8 GB DB)** | ~8 GB | `--memory-mapping` flag reduces RSS |
-| **Bracken** | < 500 MB | Post-processing only |
-| **Total peak** | ~12-14 GB | Fits comfortably in 32 GB |
-
-### Speed Benchmarks (Estimates)
-
-| Data Size | Threads | Step | Time |
-|-----------|---------|------|------|
-| 10 GB FASTQ | 8 | QC (fastp) | ~5 min |
-| 10 GB FASTQ | 8 | Alignment (Bowtie2) | ~20 min |
-| 1 GB unmapped | 8 | Kraken2 | ~3 min |
-| 50 GB FASTQ | 8 | Full pipeline | ~2-4 hours |
-
-### Tips for Large Files
-
-1. **Use `--threads` wisely**: Set to `ncores - 2` to leave room for OS
-2. **SSD storage**: BAM sorting benefits greatly from fast disk I/O
-3. **Pre-built Bowtie2 index**: `celljanus download hg38` downloads pre-built index (saves 2+ hours)
-4. **Standard-8 Kraken2 DB**: 8 GB DB fits in RAM; full Standard requires 60+ GB
-
----
-
-## Technical Architecture
-
-```
-celljanus/
-├── __init__.py          # Package metadata
-├── __main__.py          # python -m celljanus entry point
-├── cli.py               # Click-based CLI with subcommands
-├── config.py            # Configuration dataclass + tool discovery
-├── utils.py             # Subprocess runner, FASTQ streaming, logging
-├── download.py          # Reference data download (hg38, Kraken2 DB)
-├── qc.py                # fastp wrapper with gentle QC defaults
-├── align.py             # Bowtie2 host alignment + samtools sort pipe
-├── extract.py           # samtools unmapped read extraction
-├── classify.py          # Kraken2 + Bracken classification
-├── visualize.py         # matplotlib/seaborn plots
-└── pipeline.py          # Full pipeline orchestrator
-```
-
-### Design Principles
-
-1. **Python for orchestration, C/C++ for computation**: Python manages the workflow; Bowtie2, samtools, Kraken2 do the heavy lifting in optimised C/C++.
-2. **Streaming pipelines**: Bowtie2 output pipes directly into samtools sort — no intermediate SAM on disk.
-3. **Idempotent steps**: Each step checks if output already exists and skips re-computation.
-4. **Gentle QC**: Unlike typical scRNA-seq pipelines, QC uses Q15/36bp thresholds to avoid discarding genuine microbial reads.
-5. **Dual output**: Produces both a host BAM (for gene expression analysis) and microbial abundance tables.
-6. **No `pysam` dependency**: All BAM operations use `samtools` via subprocess, avoiding the Windows build failures that `pysam` causes (requires POSIX `make` / `htslib` compilation).
-
-### Comparison with MetaScope (R)
-
-| Feature | MetaScope (R) | CellJanus (Python) |
-|---------|--------------|-------------------|
-| QC | Manual / external | fastp (integrated, gentle Q15) |
-| Aligner | Rbowtie2 / Rsubread (R wrappers) | Bowtie2 direct (C++, piped to samtools) |
-| BAM handling | Rsamtools (slow for large files) | samtools CLI (C, streaming) |
-| Microbial ID | Custom Bayesian EM in R | Kraken2 + Bracken (C++, memory-mapped) |
-| Speed (10 GB FASTQ) | Hours | ~30 min |
-| Memory | High (R data frames in memory) | Low (streaming + memory-mapping) |
-| CLI | R scripts | `celljanus` / `python -m celljanus` |
-| Visualisation | ggplot2 | matplotlib + seaborn (static, publication-quality) |
-| Windows support | Via R (native) | Python native + WSL2 for external tools |
-
----
-
-## Example: Python API Usage
+## Python API
 
 ```python
 from pathlib import Path
@@ -422,7 +259,6 @@ cfg = CellJanusConfig(
     host_index=Path("./refs/bowtie2_index/GRCh38_noalt_as"),
     kraken2_db=Path("./refs/standard_8"),
     threads=8,
-    max_memory_gb=24,
 )
 
 result = run_pipeline(
@@ -431,10 +267,75 @@ result = run_pipeline(
     cfg=cfg,
 )
 
-# Access results
 print(result.bracken_df.head())
-print(result.qc_report.summary())
 ```
+
+---
+
+## Performance
+
+### Memory Budget (32 GB laptop)
+
+| Component | Memory | Strategy |
+|-----------|--------|----------|
+| fastp | < 1 GB | Streaming I/O |
+| Bowtie2 + hg38 | ~3.5 GB | Memory-mapped index |
+| samtools | ~1–2 GB | Streaming BAM |
+| Kraken2 (8 GB DB) | ~8 GB | `--memory-mapping` |
+| Bracken | < 500 MB | Post-processing |
+| **Peak total** | **~12–14 GB** | Fits comfortably |
+
+### Speed Estimates
+
+| Data Size | Threads | Full Pipeline |
+|-----------|---------|---------------|
+| 10 GB FASTQ | 8 | ~30 min |
+| 50 GB FASTQ | 8 | ~2–4 hours |
+
+---
+
+## Project Structure
+
+```
+CellJanus/
+├── celljanus/               # Package source
+│   ├── __init__.py          # Package metadata
+│   ├── __main__.py          # python -m celljanus
+│   ├── cli.py               # Click CLI with subcommands
+│   ├── config.py            # Configuration dataclass + tool discovery
+│   ├── utils.py             # Subprocess runner, FASTQ I/O, logging
+│   ├── download.py          # Reference data downloader
+│   ├── qc.py                # fastp wrapper
+│   ├── align.py             # Bowtie2 alignment
+│   ├── extract.py           # samtools unmapped extraction
+│   ├── classify.py          # Kraken2 + Bracken classification
+│   ├── visualize.py         # matplotlib / seaborn plots
+│   └── pipeline.py          # Full pipeline orchestrator
+├── tests/                   # Test suite
+│   ├── conftest.py          # pytest fixtures
+│   ├── generate_test_data.py
+│   └── test_celljanus.py    # 18 tests
+├── Dockerfile               # Docker image definition
+├── docker-compose.yml       # Docker Compose convenience
+├── pyproject.toml           # Build config + dependencies
+├── CHANGELOG.md             # Release notes
+├── LICENSE                  # MIT License
+└── README.md                # This file
+```
+
+---
+
+## Comparison with MetaScope (R)
+
+| Feature | MetaScope (R) | CellJanus (Python) |
+|---------|--------------|-------------------|
+| QC | Manual / external | fastp (integrated, gentle Q15) |
+| Aligner | Rbowtie2 / Rsubread | Bowtie2 direct (piped to samtools) |
+| BAM handling | Rsamtools | samtools CLI (streaming) |
+| Microbial ID | Bayesian EM in R | Kraken2 + Bracken (C++) |
+| Speed (10 GB) | Hours | ~30 min |
+| Memory | High (R in-memory) | Low (streaming + memory-mapping) |
+| Deployment | R scripts | CLI + Docker |
 
 ---
 
@@ -445,7 +346,6 @@ print(result.qc_report.summary())
 - [ ] Spatial transcriptomics coordinate integration
 - [ ] Interactive HTML reports (Plotly)
 - [ ] Nextflow / Snakemake workflow export
-- [ ] GPU-accelerated alignment (NVIDIA Parabricks)
 - [ ] MetaPhlAn4 integration as alternative classifier
 - [ ] Multi-sample batch processing with merged reports
 
@@ -457,21 +357,24 @@ If you use CellJanus in your research, please cite:
 
 ```
 Wang Z (2026). CellJanus: A Dual-Perspective Tool for Deconvolving Host Single-Cell
-and Microbial Transcriptomes. Python package version 0.1.0. Available at: https://github.com/zhaoqing-wang/CellJanus
+and Microbial Transcriptomes. Python package version 0.1.0.
+https://github.com/zhaoqing-wang/CellJanus
 ```
+
+---
 
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
 
----
-
 ## Acknowledgements
 
-CellJanus builds on the conceptual framework of [MetaScope](https://github.com/wejlab/metascope) (Odom et al.) and integrates established bioinformatics tools:
+CellJanus builds on the conceptual framework of
+[MetaScope](https://github.com/wejlab/metascope) (Odom et al.) and integrates
+established bioinformatics tools:
 
-- [fastp](https://github.com/OpenGene/fastp) — Chen et al., Bioinformatics, 2018
-- [Bowtie2](https://github.com/BenLangmead/bowtie2) — Langmead & Salzberg, Nature Methods, 2012
-- [samtools](https://github.com/samtools/samtools) — Li et al., Bioinformatics, 2009
-- [Kraken2](https://github.com/DerrickWood/kraken2) — Wood et al., Genome Biology, 2019
-- [Bracken](https://github.com/jenniferlu717/Bracken) — Lu et al., PeerJ Computer Science, 2017
+- [fastp](https://github.com/OpenGene/fastp) — Chen et al., *Bioinformatics*, 2018
+- [Bowtie2](https://github.com/BenLangmead/bowtie2) — Langmead & Salzberg, *Nature Methods*, 2012
+- [samtools](https://github.com/samtools/samtools) — Li et al., *Bioinformatics*, 2009
+- [Kraken2](https://github.com/DerrickWood/kraken2) — Wood et al., *Genome Biology*, 2019
+- [Bracken](https://github.com/jenniferlu717/Bracken) — Lu et al., *PeerJ Computer Science*, 2017

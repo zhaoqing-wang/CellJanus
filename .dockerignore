@@ -1,0 +1,30 @@
+# Git
+.git/
+.gitignore
+
+# Build artefacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Test / CI artefacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large data (not needed inside image)
+refs/
+*.fastq.gz
+*.bam
+*.bai
+*.log

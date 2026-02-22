@@ -1,0 +1,18 @@
+# docker-compose.yml — CellJanus convenience wrapper
+#
+# Usage:
+#   docker compose run --rm celljanus celljanus check
+#   docker compose run --rm celljanus celljanus run \
+#       --read1 /data/sample_R1.fastq.gz ...
+
+services:
+  celljanus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: celljanus:0.1.0
+    volumes:
+      - ${DATA_DIR:-./data}:/data
+    working_dir: /data
+    entrypoint: [ "conda", "run", "--no-capture-output", "-n", "celljanus" ]
+    command: [ "celljanus", "--help" ]

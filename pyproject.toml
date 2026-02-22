@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = [
     "bioinformatics", "metagenomics", "single-cell", "spatial-transcriptomics",
-    "microbiome", "host-microbe", "deconvolution",
+    "microbiome", "host-microbe", "deconvolution", "docker",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -26,6 +26,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "click>=8.1",
@@ -54,6 +55,8 @@ celljanus = "celljanus.cli:main"
 [project.urls]
 Homepage = "https://github.com/zhaoqing-wang/CellJanus"
 Repository = "https://github.com/zhaoqing-wang/CellJanus"
+Changelog = "https://github.com/zhaoqing-wang/CellJanus/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/zhaoqing-wang/CellJanus/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -66,3 +69,7 @@ target-version = ["py39"]
 [tool.ruff]
 line-length = 100
 target-version = "py39"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
