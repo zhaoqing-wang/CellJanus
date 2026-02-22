@@ -338,8 +338,7 @@ Kraken2+Bracken database from 3 bacterial 16S sequences.
 ## Citation
 
 ```
-Wang Z (2026). CellJanus: A Dual-Perspective Tool for Deconvolving Host Single-Cell
-and Microbial Transcriptomes. Python package version 0.1.2.
+Wang Z (2026). CellJanus: A Dual-Perspective Tool for Deconvolving Host Single-Cell and Microbial Transcriptomes. Python package version 0.1.2.
 https://github.com/zhaoqing-wang/CellJanus
 ```
 
