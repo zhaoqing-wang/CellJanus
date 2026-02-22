@@ -45,13 +45,13 @@ def _apply_style() -> None:
         {
             "font.family": "sans-serif",
             "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
-            "font.size": 11,
-            "axes.titlesize": 14,
+            "font.size": 12,
+            "axes.titlesize": 16,
             "axes.titleweight": "bold",
-            "axes.labelsize": 12,
-            "xtick.labelsize": 10,
-            "ytick.labelsize": 10,
-            "legend.fontsize": 9,
+            "axes.labelsize": 13,
+            "xtick.labelsize": 11,
+            "ytick.labelsize": 11,
+            "legend.fontsize": 11,
             "figure.dpi": 150,
             "savefig.dpi": 300,
             "savefig.bbox": "tight",
@@ -129,12 +129,12 @@ def plot_abundance_bar(
             label,
             va="center",
             ha="left",
-            fontsize=9,
+            fontsize=11,
             color="#333333",
         )
 
-    ax.set_xlabel("Estimated Read Count")
-    ax.set_title(title, pad=12)
+    ax.set_xlabel("Estimated Read Count", fontsize=13)
+    ax.set_title(title, fontsize=16, pad=12)
     ax.set_xlim(0, max_val * 1.25)  # room for labels
     ax.ticklabel_format(axis="x", style="plain")
     fig.tight_layout()
@@ -172,17 +172,18 @@ def plot_abundance_pie(
     n = len(data)
     colors = sns.color_palette("husl", n)
 
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(12, 8))
     wedges, texts, autotexts = ax.pie(
         data[value_col],
         autopct=lambda pct: f"{pct:.1f}%" if pct > 2 else "",
         colors=colors,
-        pctdistance=0.78,
+        pctdistance=0.75,
         startangle=140,
-        wedgeprops=dict(width=0.42, edgecolor="white", linewidth=2),
+        wedgeprops=dict(width=0.40, edgecolor="white", linewidth=2),
     )
     for t in autotexts:
-        t.set_fontsize(9)
+        t.set_fontsize(13)
+        t.set_fontweight("bold")
         t.set_color("#333333")
 
     # Legend instead of crowded labels
@@ -194,13 +195,13 @@ def plot_abundance_pie(
         legend_labels,
         loc="center left",
         bbox_to_anchor=(1.0, 0.5),
-        fontsize=9,
+        fontsize=13,
         frameon=False,
     )
 
     # Centre text
-    ax.text(0, 0, f"{total:,.0f}\nreads", ha="center", va="center", fontsize=13, fontweight="bold")
-    ax.set_title(title, pad=16)
+    ax.text(0, 0, f"{total:,.0f}\nreads", ha="center", va="center", fontsize=16, fontweight="bold")
+    ax.set_title(title, fontsize=16, pad=16)
     fig.tight_layout()
 
     return _save(fig, output_path, dpi=cfg.dpi)
@@ -293,13 +294,15 @@ def plot_taxonomy_heatmap(
         data[["log10"]],
         annot=data[["Abundance"]].values,
         fmt=".0f",
+        annot_kws={"fontsize": 12},
         cmap="YlOrRd",
         cbar_kws={"label": "log₁₀(reads)", "shrink": 0.6},
         linewidths=0.8,
         linecolor="white",
         ax=ax,
     )
-    ax.set_title(title, pad=12)
+    ax.set_title(title, fontsize=16, pad=12)
+    ax.tick_params(axis="both", labelsize=12)
     ax.set_ylabel("")
     ax.set_xlabel("")
     ax.tick_params(axis="y", rotation=0)
@@ -337,20 +340,62 @@ def plot_qc_dashboard(
     if cfg is None:
         cfg = CellJanusConfig()
 
-    fig = plt.figure(figsize=(20, 7))
+    fig = plt.figure(figsize=(18, 5.5))
     fig.suptitle(
         "CellJanus Pipeline Summary",
         fontsize=18,
         fontweight="bold",
-        y=0.98,
+        y=1.0,
     )
 
-    # Use gridspec for better control
-    gs = fig.add_gridspec(1, 3, wspace=0.25, left=0.05, right=0.95, top=0.88, bottom=0.08)
+    # Tight gridspec — minimal vertical whitespace
+    gs = fig.add_gridspec(
+        1,
+        3,
+        wspace=0.15,
+        left=0.02,
+        right=0.98,
+        top=0.85,
+        bottom=0.05,
+    )
+
+    # Helper: draw a panel with title + key-value text filling the box
+    def _draw_panel(gs_idx, title, color, bg, border, lines_text, font_sz=12):
+        ax = fig.add_subplot(gs[gs_idx])
+        ax.axis("off")
+        # Title
+        ax.text(
+            0.5,
+            0.97,
+            title,
+            transform=ax.transAxes,
+            fontsize=15,
+            fontweight="bold",
+            ha="center",
+            va="top",
+            color=color,
+        )
+        # Content box — vertically centered in remaining space
+        ax.text(
+            0.5,
+            0.48,
+            lines_text,
+            transform=ax.transAxes,
+            fontsize=font_sz,
+            va="center",
+            ha="center",
+            fontfamily="monospace",
+            linespacing=1.6,
+            bbox=dict(
+                boxstyle="round,pad=0.8",
+                facecolor=bg,
+                edgecolor=border,
+                alpha=0.95,
+            ),
+        )
+        return ax
 
     # --- Panel 1: QC ---
-    ax = fig.add_subplot(gs[0])
-    ax.axis("off")
     reads_before = qc_report.get("total_reads_before", 0)
     reads_after = qc_report.get("total_reads_after", 0)
     retained_pct = 100.0 * reads_after / reads_before if reads_before > 0 else 0.0
@@ -363,32 +408,9 @@ def plot_qc_dashboard(
         ("Adapters trimmed", f"{qc_report.get('adapter_trimmed_reads', 0):>10,}"),
     ]
     qc_text = "\n".join(f"{k:<18s} {v}" for k, v in qc_lines)
-    ax.text(
-        0.5,
-        0.92,
-        "Quality Control",
-        transform=ax.transAxes,
-        fontsize=14,
-        fontweight="bold",
-        ha="center",
-        va="top",
-        color="#1a73e8",
-    )
-    ax.text(
-        0.5,
-        0.78,
-        qc_text,
-        transform=ax.transAxes,
-        fontsize=11,
-        va="top",
-        ha="center",
-        fontfamily="monospace",
-        bbox=dict(boxstyle="round,pad=0.6", facecolor="#e8f0fe", edgecolor="#a8c7fa", alpha=0.95),
-    )
+    _draw_panel(0, "Quality Control", "#1a73e8", "#e8f0fe", "#a8c7fa", qc_text)
 
     # --- Panel 2: Alignment ---
-    ax = fig.add_subplot(gs[1])
-    ax.axis("off")
     total = align_stats.get("total_reads", 0)
     mapped = total - align_stats.get("aligned_0_times", 0)
     unmapped = align_stats.get("aligned_0_times", 0)
@@ -400,53 +422,11 @@ def plot_qc_dashboard(
         ("Alignment rate", f"{rate:>10}"),
     ]
     align_text = "\n".join(f"{k:<20s} {v}" for k, v in align_lines)
-    ax.text(
-        0.5,
-        0.92,
-        "Host Alignment",
-        transform=ax.transAxes,
-        fontsize=14,
-        fontweight="bold",
-        ha="center",
-        va="top",
-        color="#0d904f",
-    )
-    ax.text(
-        0.5,
-        0.78,
-        align_text,
-        transform=ax.transAxes,
-        fontsize=11,
-        va="top",
-        ha="center",
-        fontfamily="monospace",
-        bbox=dict(boxstyle="round,pad=0.6", facecolor="#e6f4ea", edgecolor="#a8dab5", alpha=0.95),
-    )
+    _draw_panel(1, "Host Alignment", "#0d904f", "#e6f4ea", "#a8dab5", align_text)
 
     # --- Panel 3: Classification ---
-    ax = fig.add_subplot(gs[2])
-    ax.axis("off")
-    ax.text(
-        0.5,
-        0.92,
-        "Microbial Classification",
-        transform=ax.transAxes,
-        fontsize=14,
-        fontweight="bold",
-        ha="center",
-        va="top",
-        color="#c5221f",
-    )
-    ax.text(
-        0.5,
-        0.78,
-        classify_summary,
-        transform=ax.transAxes,
-        fontsize=10,
-        va="top",
-        ha="center",
-        fontfamily="monospace",
-        bbox=dict(boxstyle="round,pad=0.6", facecolor="#fce8e6", edgecolor="#f5b7b1", alpha=0.95),
+    _draw_panel(
+        2, "Microbial Classification", "#c5221f", "#fce8e6", "#f5b7b1", classify_summary, font_sz=11
     )
 
     return _save(fig, output_path, dpi=cfg.dpi)

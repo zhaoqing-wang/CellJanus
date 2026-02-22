@@ -1,0 +1,17 @@
+Step,Metric,Value
+QC,reads_before,2000
+QC,reads_after,1800
+QC,retained_pct,90.0
+QC,q20_before,0.88249
+QC,q20_after,0.980544
+QC,q30_before,0.452737
+QC,q30_after,0.503041
+QC,gc_content,0.591326
+QC,duplication_rate,0
+Alignment,total_reads,900
+Alignment,host_mapped,295
+Alignment,unmapped,605
+Alignment,alignment_rate,66.39%
+Classification,species_detected,3
+Classification,classified_reads,300
+Pipeline,elapsed_seconds,0.0

@@ -1,0 +1,27 @@
+File,Bytes,Size
+01_qc/reads_R1_fastp.html,461987,451.2 KB
+01_qc/reads_R1_fastp.json,109063,106.5 KB
+01_qc/reads_R1_qc.fastq.gz,103806,101.4 KB
+01_qc/reads_R2_qc.fastq.gz,104638,102.2 KB
+02_alignment/host_align_stats.txt,2386,2.3 KB
+02_alignment/host_aligned.sorted.bam,237223,231.7 KB
+02_alignment/host_aligned.sorted.bam.bai,176,176.0 B
+02_alignment/host_mapped.sorted.bam,168974,165.0 KB
+02_alignment/host_mapped.sorted.bam.bai,176,176.0 B
+02_alignment/unmapped_R1.fastq.gz,107842,105.3 KB
+02_alignment/unmapped_R2.fastq.gz,108868,106.3 KB
+04_classification/bracken_S.txt,229,229.0 B
+04_classification/kraken2_output.txt,102198,99.8 KB
+04_classification/kraken2_report.txt,969,969.0 B
+04_classification/kraken2_report_bracken_species.txt,920,920.0 B
+05_visualisation/plots/abundance_bar.pdf,23003,22.5 KB
+05_visualisation/plots/abundance_bar.png,116497,113.8 KB
+05_visualisation/plots/abundance_heatmap.pdf,22951,22.4 KB
+05_visualisation/plots/abundance_heatmap.png,94779,92.6 KB
+05_visualisation/plots/abundance_pie.pdf,22902,22.4 KB
+05_visualisation/plots/abundance_pie.png,218199,213.1 KB
+05_visualisation/plots/pipeline_dashboard.pdf,28500,27.8 KB
+05_visualisation/plots/pipeline_dashboard.png,341341,333.3 KB
+06_tables/pipeline_summary.csv,420,420.0 B
+06_tables/species_abundance.csv,149,149.0 B
+celljanus.log,5748,5.6 KB
