@@ -15,6 +15,8 @@
   </tr>
 </table>
 
+## Pipeline
+
 ```
 FASTQ ─→ fastp (QC) ─→ Bowtie2 (host alignment) ─→ unmapped reads
                              │                            │
