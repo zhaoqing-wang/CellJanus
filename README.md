@@ -19,11 +19,8 @@
 FASTQ ─→ fastp (QC) ─→ Bowtie2 (host alignment) ─→ unmapped reads
                              │                            │
                              ▼                            ▼
-                    host_aligned.bam           Kraken2 + Bracken
+                    host_aligned.bam           Kraken2 + Bracken ─→ plots (PNG/PDF) + CSV tables
                    (gene expression)        (microbial abundance)
-                                                     │
-                                                     ▼
-                                          plots (PNG/PDF) + CSV tables
 ```
 
 ## Contents
@@ -101,18 +98,20 @@ celljanus run \
 
 #### Example Output
 
-<p align="center">
-  <img src="docs/pipeline_dashboard.png" alt="Pipeline Dashboard" width="90%" />
-</p>
+| Pipeline Dashboard | |
+|:--:|:--:|
+| ![Pipeline Dashboard](docs/pipeline_dashboard.png) | |
+| **Summarises QC, alignment and classification metrics in a single view.** | |
 
-<p align="center">
-  <img src="docs/abundance_bar.png" alt="Abundance Bar Chart" width="45%" />
-  <img src="docs/abundance_pie.png" alt="Abundance Pie Chart" width="45%" />
-</p>
+| Abundance Bar Chart | Abundance Donut Chart |
+|:--:|:--:|
+| ![Bar](docs/abundance_bar.png) | ![Pie](docs/abundance_pie.png) |
+| Top species ranked by read count. | Relative proportion of each species. |
 
-<p align="center">
-  <img src="docs/abundance_heatmap.png" alt="Abundance Heatmap" width="45%" />
-</p>
+| Abundance Heatmap | |
+|:--:|:--:|
+| ![Heatmap](docs/abundance_heatmap.png) | |
+| **Log₁₀-scaled heatmap of species abundance.** | |
 
 ### Run Individual Steps
 
