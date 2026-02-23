@@ -1,8 +1,7 @@
 <table>
   <tr>
     <td>
-      <h1>CellJanus</h1>
-      <p><strong>Dual-perspective deconvolution of host and microbial transcriptomes from FASTQ data.</strong></p>
+      <h1>CellJanus: Dual-Perspective Deconvolution of Host and Microbial Transcriptomes from FASTQ Data</h1>
       <p>
         <a href="https://github.com/zhaoqing-wang/CellJanus/releases"><img src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fzhaoqing-wang%2FCellJanus%2Fmain%2Fpyproject.toml&label=Version&query=project.version&color=blue&style=flat-square" alt="Version" /></a>
         <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
@@ -22,7 +21,7 @@
 FASTQ ─→ fastp (QC) ─→ Bowtie2 (host alignment) ─→ unmapped reads
                              │                            │
                              ▼                            ▼
-                    host_aligned.bam           Kraken2 + Bracken ─→ plots (PNG/PDF) + CSV tables
+                    host_aligned.bam           Kraken2 + Bracken  ─→  plots (PNG/PDF) + CSV tables
                    (gene expression)        (microbial abundance)
 ```
 
