@@ -5,8 +5,9 @@
       <p><strong>Dual-perspective deconvolution of host and microbial transcriptomes from FASTQ data.</strong></p>
       <p>
         <a href="https://github.com/zhaoqing-wang/CellJanus/releases"><img src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fzhaoqing-wang%2FCellJanus%2Fmain%2Fpyproject.toml&label=Version&query=project.version&color=blue&style=flat-square" alt="Version" /></a>
-        <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+        <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
         <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9%2B-blue.svg" alt="Python 3.9+" /></a>
+        <a href="https://github.com/zhaoqing-wang"><img src="https://img.shields.io/badge/Maintainer-Zhaoqing_Wang-green" alt="GitHub Maintainer" /></a>
       </p>
     </td>
     <td width="200">
