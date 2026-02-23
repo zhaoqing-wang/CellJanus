@@ -1,10 +1,19 @@
-# CellJanus
-
-**Dual-perspective deconvolution of host and microbial transcriptomes from FASTQ data.**
-
-[![Version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fzhaoqing-wang%2FCellJanus%2Fmain%2Fpyproject.toml&label=Version&query=project.version&color=blue&style=flat-square)](https://github.com/zhaoqing-wang/CellJanus/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
+<table>
+  <tr>
+    <td>
+      <h1>CellJanus</h1>
+      <p><strong>Dual-perspective deconvolution of host and microbial transcriptomes from FASTQ data.</strong></p>
+      <p>
+        <a href="https://github.com/zhaoqing-wang/CellJanus/releases"><img src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fzhaoqing-wang%2FCellJanus%2Fmain%2Fpyproject.toml&label=Version&query=project.version&color=blue&style=flat-square" alt="Version" /></a>
+        <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+        <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9%2B-blue.svg" alt="Python 3.9+" /></a>
+      </p>
+    </td>
+    <td width="200">
+      <img src="docs/Sticker.png" alt="CellJanus Logo" width="200" />
+    </td>
+  </tr>
+</table>
 
 ```
 FASTQ ─→ fastp (QC) ─→ Bowtie2 (host alignment) ─→ unmapped reads
@@ -90,7 +99,20 @@ celljanus run \
 | Top species | *S. aureus* 38.7%, *K. pneumoniae* 31.3%, *E. coli* 30.0% |
 | Output | 8 plots (PNG + PDF), 3 CSV tables, QC reports |
 
-Pre-computed results are available in [`test_results/`](test_results/).
+#### Example Output
+
+<p align="center">
+  <img src="docs/pipeline_dashboard.png" alt="Pipeline Dashboard" width="90%" />
+</p>
+
+<p align="center">
+  <img src="docs/abundance_bar.png" alt="Abundance Bar Chart" width="45%" />
+  <img src="docs/abundance_pie.png" alt="Abundance Pie Chart" width="45%" />
+</p>
+
+<p align="center">
+  <img src="docs/abundance_heatmap.png" alt="Abundance Heatmap" width="45%" />
+</p>
 
 ### Run Individual Steps
 

@@ -38,3 +38,6 @@ refs/
 
 # Logs
 *.log
+
+# Test results (generated locally)
+test_results/
