@@ -98,20 +98,15 @@ celljanus run \
 
 #### Example Output
 
-| Pipeline Dashboard | |
-|:--:|:--:|
-| ![Pipeline Dashboard](docs/pipeline_dashboard.png) | |
-| **Summarises QC, alignment and classification metrics in a single view.** | |
+| Pipeline Dashboard |
+|:--:|
+| ![Pipeline Dashboard](docs/pipeline_dashboard.png) |
+| *Summarises QC, alignment and classification metrics in a single view.* |
 
-| Abundance Bar Chart | Abundance Donut Chart |
-|:--:|:--:|
-| ![Bar](docs/abundance_bar.png) | ![Pie](docs/abundance_pie.png) |
-| Top species ranked by read count. | Relative proportion of each species. |
-
-| Abundance Heatmap | |
-|:--:|:--:|
-| ![Heatmap](docs/abundance_heatmap.png) | |
-| **Log₁₀-scaled heatmap of species abundance.** | |
+| Abundance Bar Chart | Abundance Donut Chart | Abundance Heatmap |
+|:--:|:--:|:--:|
+| ![Bar](docs/abundance_bar.png) | ![Pie](docs/abundance_pie.png) | ![Heatmap](docs/abundance_heatmap.png) |
+| Top species ranked by read count. | Relative proportion of each species. | Log₁₀-scaled heatmap of species abundance. |
 
 ### Run Individual Steps
 
