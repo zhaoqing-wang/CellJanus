@@ -1,0 +1,78 @@
+# ──────────────────────────────────────────────────────────────
+# Publish CellJanus to PyPI when a GitHub Release is created
+# ──────────────────────────────────────────────────────────────
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]          # triggers on new GitHub Release
+
+  workflow_dispatch:             # allow manual trigger from Actions tab
+
+jobs:
+  # ── 1. Build sdist + wheel ─────────────────────────────────
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: pip install build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+  # ── 2. Publish to PyPI (Trusted Publisher / OIDC) ──────────
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/celljanus
+    permissions:
+      id-token: write            # required for OIDC trusted publishing
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  # ── 3. (Optional) Publish to TestPyPI ──────────────────────
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'   # only on manual trigger
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/celljanus
+    permissions:
+      id-token: write
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
