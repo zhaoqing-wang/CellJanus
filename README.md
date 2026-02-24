@@ -4,7 +4,6 @@
       <h1>CellJanus: Dual-Perspective Deconvolution of Host and Microbial Transcriptomes from FASTQ Data</h1>
       <p>
         <a href="https://pypi.org/project/celljanus/"><img src="https://img.shields.io/pypi/v/celljanus?color=blue&style=flat-square" alt="PyPI Version" /></a>
-        <a href="https://pypi.org/project/celljanus/"><img src="https://img.shields.io/pypi/dm/celljanus?style=flat-square&label=Downloads" alt="PyPI Downloads" /></a>
         <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
         <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9%2B-blue.svg" alt="Python 3.9+" /></a>
         <a href="https://github.com/zhaoqing-wang"><img src="https://img.shields.io/badge/Maintainer-Zhaoqing_Wang-green" alt="GitHub Maintainer" /></a>
