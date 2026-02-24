@@ -34,7 +34,7 @@ jobs:
           name: python-package-distributions
           path: dist/
 
-  # ── 2. Publish to PyPI (Trusted Publisher / OIDC) ──────────
+  # ── 2. Publish to PyPI (API Token) ───────────────────────────
   publish-pypi:
     name: Publish to PyPI
     needs: build
@@ -42,8 +42,6 @@ jobs:
     environment:
       name: pypi
       url: https://pypi.org/p/celljanus
-    permissions:
-      id-token: write            # required for OIDC trusted publishing
     steps:
       - name: Download dist artifacts
         uses: actions/download-artifact@v4
@@ -53,6 +51,8 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
 
   # ── 3. (Optional) Publish to TestPyPI ──────────────────────
   publish-testpypi:
@@ -63,8 +63,6 @@ jobs:
     environment:
       name: testpypi
       url: https://test.pypi.org/p/celljanus
-    permissions:
-      id-token: write
     steps:
       - name: Download dist artifacts
         uses: actions/download-artifact@v4
@@ -76,3 +74,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
