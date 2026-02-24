@@ -5,6 +5,19 @@ All notable changes to CellJanus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] — 2026-02-24
+
+### Added
+
+- **Published to PyPI**: `pip install celljanus` now works directly.
+- **GitHub Actions CI/CD**: automatic PyPI publishing on new GitHub Release (`.github/workflows/publish.yml`).
+- **PyPI badge** and **Downloads badge** in README.
+
+### Changed
+
+- README Installation section restructured: `pip install` as primary method; conda, source, and Docker as alternatives.
+- Citation updated to version 0.1.4.
+
 ## [0.1.3] — 2026-02-22
 
 ### Added

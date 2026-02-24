@@ -3,7 +3,8 @@
     <td>
       <h1>CellJanus: Dual-Perspective Deconvolution of Host and Microbial Transcriptomes from FASTQ Data</h1>
       <p>
-        <a href="https://github.com/zhaoqing-wang/CellJanus/releases"><img src="https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fzhaoqing-wang%2FCellJanus%2Fmain%2Fpyproject.toml&label=Version&query=project.version&color=blue&style=flat-square" alt="Version" /></a>
+        <a href="https://pypi.org/project/celljanus/"><img src="https://img.shields.io/pypi/v/celljanus?color=blue&style=flat-square" alt="PyPI Version" /></a>
+        <a href="https://pypi.org/project/celljanus/"><img src="https://img.shields.io/pypi/dm/celljanus?style=flat-square&label=Downloads" alt="PyPI Downloads" /></a>
         <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
         <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9%2B-blue.svg" alt="Python 3.9+" /></a>
         <a href="https://github.com/zhaoqing-wang"><img src="https://img.shields.io/badge/Maintainer-Zhaoqing_Wang-green" alt="GitHub Maintainer" /></a>
@@ -39,27 +40,46 @@ FASTQ ─→ fastp (QC) ─→ Bowtie2 (host alignment) ─→ unmapped reads
 
 ## Installation
 
+### Option 1: pip install from PyPI (recommended)
+
+> CellJanus is a pure-Python orchestrator — `pip install` gets you the CLI and API immediately.  
+> External bioinformatics tools (fastp, Bowtie2, etc.) are only needed at **runtime**, not at install time.
+
+```bash
+pip install celljanus
+
+# Verify
+celljanus --version
+```
+
+### Option 2: Conda environment with full pipeline tools
+
 > Requires **Linux / macOS / WSL2**. Bioconda packages are not available on native Windows.
 
 ```bash
-# Create conda environment with all dependencies
+# Create conda environment with all external tools
 conda create -n CellJanus -c bioconda -c conda-forge \
     python=3.11 fastp bowtie2 samtools kraken2 bracken
 
-# Install CellJanus
 conda activate CellJanus
-git clone https://github.com/zhaoqing-wang/CellJanus.git
-cd CellJanus
-pip install .
+pip install celljanus          # install from PyPI
 
-# Verify installation
+# Verify all tools
 celljanus check
 ```
 
 All tools should show **✔ Found**. STAR is optional (for future RNA-seq alignment support).
 
+### Option 3: Install from source (development)
+
+```bash
+git clone https://github.com/zhaoqing-wang/CellJanus.git
+cd CellJanus
+pip install -e ".[dev]"        # editable install with dev dependencies
+```
+
 <details>
-<summary>Docker alternative</summary>
+<summary>Option 4: Docker</summary>
 
 ```bash
 docker build -t celljanus .
@@ -276,7 +296,7 @@ output_dir/
 
 ```
 Wang Z (2026). CellJanus: A Dual-Perspective Tool for Deconvolving Host
-Single-Cell and Microbial Transcriptomes. Python package version 0.1.3.
+Single-Cell and Microbial Transcriptomes. Python package version 0.1.4.
 https://github.com/zhaoqing-wang/CellJanus
 ```
 
