@@ -40,52 +40,61 @@ FASTQ ─→ fastp (QC) ─→ Bowtie2 (host alignment) ─→ unmapped reads
 
 ## Installation
 
-### Option 1: pip install from PyPI (recommended)
+### Quick Setup (recommended)
 
-> CellJanus is a pure-Python orchestrator — `pip install` gets you the CLI and API immediately.  
-> External bioinformatics tools (fastp, Bowtie2, etc.) are only needed at **runtime**, not at install time.
+One command creates a complete environment with CellJanus **and** all external tools (fastp, Bowtie2, samtools, Kraken2, Bracken):
 
-```bash
-pip install celljanus
-
-# Verify
-celljanus --version
-```
-
-### Option 2: Conda environment with full pipeline tools
-
-> Requires **Linux / macOS / WSL2**. Bioconda packages are not available on native Windows.
+> Requires [Conda](https://docs.conda.io/en/latest/miniconda.html) or [Mamba](https://mamba.readthedocs.io/). Works on **Linux / macOS / WSL2**.
 
 ```bash
-# Create conda environment with all external tools
-conda create -n CellJanus -c bioconda -c conda-forge \
-    python=3.11 fastp bowtie2 samtools kraken2 bracken
+# Download the environment file and create the environment
+conda env create -f https://raw.githubusercontent.com/zhaoqing-wang/CellJanus/main/environment.yml
 
-conda activate CellJanus
-pip install celljanus          # install from PyPI
+# Activate
+conda activate celljanus
 
-# Verify all tools
+# Verify — all tools should show ✔ Found
 celljanus check
 ```
 
-All tools should show **✔ Found**. STAR is optional (for future RNA-seq alignment support).
+Or if you already cloned the repository:
 
-### Option 3: Install from source (development)
+```bash
+conda env create -f environment.yml
+conda activate celljanus
+celljanus check
+```
+
+<details>
+<summary><b>Alternative installation methods</b></summary>
+
+#### pip only (Python package without external tools)
+
+CellJanus itself is a pure-Python orchestrator. If you already have fastp, Bowtie2, etc. on your PATH:
+
+```bash
+pip install celljanus
+celljanus --version
+```
+
+#### From source (development)
 
 ```bash
 git clone https://github.com/zhaoqing-wang/CellJanus.git
 cd CellJanus
-pip install -e ".[dev]"        # editable install with dev dependencies
+pip install -e ".[dev]"
 ```
 
-<details>
-<summary>Option 4: Docker</summary>
+#### Docker
 
 ```bash
 docker build -t celljanus .
 docker run --rm celljanus celljanus check
 ```
+
 </details>
+
+All tools should show **✔ Found**. STAR is optional (for future RNA-seq alignment support).
 
 ---
 
