@@ -57,6 +57,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Test suite platform compatibility fixed for WSL2 detection tests.
 - Unicode subscript characters (`log₁₀`) replaced with LaTeX mathtext (`$\log_{10}$`) for font compatibility.
 
+### Tested
+
+- **Full WSL2 validation** (Ubuntu 24.04 on WSL2):
+  - All 26 pytest tests passed.
+  - Full pipeline test completed successfully with fastp, bowtie2, kraken2, bracken.
+  - scRNA-seq module WSL2 detection verified.
+  - Cross-filesystem path detection working correctly.
+  - Tool versions tested: STAR 2.7.11b, fastp 0.23.4, bowtie2 2.5.2, kraken2 2.1.3, samtools 1.19.2.
+
 ## [0.1.4] — 2026-02-24
 
 ### Added

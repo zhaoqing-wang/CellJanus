@@ -463,17 +463,34 @@ When running CellJanus on WSL2 (Windows Subsystem for Linux 2), file I/O can be 
 
 STAR (Spliced Transcripts Alignment to a Reference) is optional but useful for RNA-seq alignment. Here's how to install it on WSL2 or Linux:
 
-### Method 1: Conda (Recommended)
+### Method 1: APT (Ubuntu/Debian — Simplest for WSL2)
 
 ```bash
-# Install via Bioconda (easiest)
-conda install -c bioconda star=2.7.11b
+# Install STAR and other bioinformatics tools
+sudo apt-get update
+sudo apt-get install -y rna-star fastp bowtie2 samtools kraken2
+
+# Verify installation
+STAR --version          # Should show 2.7.11b
+fastp --version         # Should show 0.23.4
+bowtie2 --version       # Should show 2.5.2
+kraken2 --version       # Should show 2.1.3
+samtools --version      # Should show 1.19.2
+```
+
+> **Note**: Bracken is not in apt repositories. Install from source (see below).
+
+### Method 2: Conda (Cross-platform)
+
+```bash
+# Install via Bioconda (all tools at once)
+conda install -c bioconda star=2.7.11b fastp bowtie2 samtools kraken2 bracken
 
 # Verify installation
 STAR --version
 ```
 
-### Method 2: Pre-built Binary
+### Method 3: Pre-built Binary (STAR only)
 
 ```bash
 # Download pre-compiled binary
@@ -485,18 +502,27 @@ sudo cp STAR_2.7.11b/Linux_x86_64_static/STAR /usr/local/bin/
 STAR --version
 ```
 
-### Method 3: Compile from Source
+### Installing Bracken from Source
+
+Bracken requires manual installation on Ubuntu:
 
 ```bash
-# Clone and build (requires g++ and make)
-git clone https://github.com/alexdobin/STAR.git
-cd STAR/source
+# Clone and build
+cd /tmp
+git clone https://github.com/jenniferlu717/Bracken.git
+cd Bracken
+bash install_bracken.sh
 
-# Compile (adjust threads as needed)
-make -j4 STAR
+# Symlink to PATH
+sudo ln -sf /tmp/Bracken/bracken /usr/local/bin/bracken
+sudo ln -sf /tmp/Bracken/bracken-build /usr/local/bin/bracken-build
+```
 
-# Install
-sudo cp STAR /usr/local/bin/
+### Verify All Tools
+
+```bash
+# Check CellJanus can find all tools
+celljanus check
 ```
 
 ### STAR Hardware Requirements
