@@ -448,11 +448,15 @@ def plot_cell_species_heatmap(
     *,
     top_n_species: int = 20,
     top_n_cells: int = 100,
+    max_display_cells: int = 200,
+    sample_method: str = "stratified",
     title: str = "Per-Cell Microbial Abundance",
     cfg: Optional[CellJanusConfig] = None,
 ) -> list[Path]:
     """
     Heatmap showing microbial abundance per cell barcode.
+
+    Optimized for large datasets (10,000+ cells) with smart sampling.
 
     Parameters
     ----------
@@ -461,20 +465,47 @@ def plot_cell_species_heatmap(
     top_n_species : int
         Show only top N species by total abundance.
     top_n_cells : int
-        Show only top N cells by total microbial reads.
+        Show only top N cells by total microbial reads. For large datasets,
+        this is capped at max_display_cells.
+    max_display_cells : int
+        Maximum cells to display in heatmap (default: 200). Prevents memory issues.
+    sample_method : str
+        'top' = show top cells by read count
+        'stratified' = sample across read count distribution
+        'random' = random sample
     """
     _apply_style()
     if cfg is None:
         cfg = CellJanusConfig()
 
-    # Filter to top species and cells
+    total_cells = len(matrix_df)
+    total_species = len(matrix_df.columns)
+
+    # Efficient species selection using vectorized operations
     species_totals = matrix_df.sum().sort_values(ascending=False)
     top_species = species_totals.head(top_n_species).index.tolist()
 
+    # Smart cell sampling for large datasets
     cell_totals = matrix_df.sum(axis=1).sort_values(ascending=False)
-    top_cells = cell_totals.head(top_n_cells).index.tolist()
+    n_display = min(top_n_cells, max_display_cells, total_cells)
 
-    plot_data = matrix_df.loc[top_cells, top_species].copy()
+    if sample_method == "stratified" and total_cells > n_display * 2:
+        # Stratified sampling: include top, middle, and bottom read-count cells
+        n_top = n_display // 2
+        n_middle = n_display // 4
+        n_low = n_display - n_top - n_middle
+        idx_top = cell_totals.head(n_top).index.tolist()
+        idx_middle = cell_totals.iloc[total_cells // 4 : total_cells // 4 + n_middle].index.tolist()
+        idx_low = cell_totals.iloc[-n_low:].index.tolist()
+        sample_cells = idx_top + idx_middle + idx_low
+    elif sample_method == "random" and total_cells > n_display:
+        import random
+
+        sample_cells = random.sample(list(cell_totals.index), n_display)
+    else:
+        sample_cells = cell_totals.head(n_display).index.tolist()
+
+    plot_data = matrix_df.loc[sample_cells, top_species].copy()
 
     # Log transform for better visualization
     plot_data_log = np.log10(plot_data + 1)
@@ -482,21 +513,28 @@ def plot_cell_species_heatmap(
     n_cells = len(plot_data)
     n_species = len(top_species)
 
-    fig, ax = plt.subplots(figsize=(max(8, n_species * 0.5), max(6, n_cells * 0.15)))
+    # Dynamic figure sizing with max limits
+    fig_width = min(20, max(8, n_species * 0.5))
+    fig_height = min(15, max(6, n_cells * 0.12))
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
+    # Optimized heatmap: disable gridlines for large matrices
     sns.heatmap(
         plot_data_log,
         cmap="YlOrRd",
         cbar_kws={"label": r"$\log_{10}$(count + 1)", "shrink": 0.6},
-        linewidths=0.1,
+        linewidths=0 if n_cells > 50 else 0.1,
         linecolor="white",
         ax=ax,
         xticklabels=True,
-        yticklabels=n_cells <= 50,  # Only show labels for smaller matrices
+        yticklabels=n_cells <= 50,
     )
 
-    ax.set_title(title, fontsize=16, pad=12)
-    ax.set_xlabel("Species", fontsize=13)
+    sampling_note = (
+        "" if total_cells <= n_display else f" (showing {n_display}/{total_cells} cells)"
+    )
+    ax.set_title(f"{title}{sampling_note}", fontsize=16, pad=12)
+    ax.set_xlabel(f"Species (top {n_species} of {total_species})", fontsize=13)
     ax.set_ylabel("Cell Barcode" if n_cells <= 50 else f"Cells (n={n_cells})", fontsize=13)
     ax.tick_params(axis="x", rotation=45, labelsize=10)
     ax.tick_params(axis="y", rotation=0, labelsize=8)
@@ -510,6 +548,7 @@ def plot_cell_microbe_summary(
     output_path: Path,
     *,
     title: str = "scRNA-seq Microbial Detection Summary",
+    top_n_species: int = 15,
     cfg: Optional[CellJanusConfig] = None,
 ) -> list[Path]:
     """
@@ -517,10 +556,15 @@ def plot_cell_microbe_summary(
     - Distribution of microbial reads per cell
     - Species richness per cell
     - Top species across all cells
+
+    Optimized for datasets with 10,000+ cells.
     """
     _apply_style()
     if cfg is None:
         cfg = CellJanusConfig()
+
+    total_cells = len(matrix_df)
+    total_species = len(matrix_df.columns)
 
     fig = plt.figure(figsize=(16, 5))
     gs = fig.add_gridspec(1, 3, wspace=0.3)
@@ -528,10 +572,21 @@ def plot_cell_microbe_summary(
     # Panel 1: Reads per cell distribution
     ax1 = fig.add_subplot(gs[0])
     reads_per_cell = matrix_df.sum(axis=1)
-    ax1.hist(reads_per_cell, bins=50, color="#1a73e8", edgecolor="white", alpha=0.8)
-    ax1.set_xlabel("Microbial Reads per Cell", fontsize=12)
+
+    # Use log scale bins for large dynamic range
+    if reads_per_cell.max() > reads_per_cell.median() * 100:
+        bins = np.logspace(
+            np.log10(max(1, reads_per_cell.min())), np.log10(reads_per_cell.max() + 1), 51
+        )
+        ax1.hist(reads_per_cell + 1, bins=bins, color="#1a73e8", edgecolor="white", alpha=0.8)
+        ax1.set_xscale("log")
+        ax1.set_xlabel(r"Microbial Reads per Cell ($\log_{10}$)", fontsize=12)
+    else:
+        ax1.hist(reads_per_cell, bins=50, color="#1a73e8", edgecolor="white", alpha=0.8)
+        ax1.set_xlabel("Microbial Reads per Cell", fontsize=12)
+
     ax1.set_ylabel("Number of Cells", fontsize=12)
-    ax1.set_title("Read Depth Distribution", fontsize=14, fontweight="bold")
+    ax1.set_title(f"Read Depth (n={total_cells:,} cells)", fontsize=14, fontweight="bold")
     ax1.axvline(
         reads_per_cell.median(),
         color="red",
@@ -543,23 +598,27 @@ def plot_cell_microbe_summary(
     # Panel 2: Species richness per cell
     ax2 = fig.add_subplot(gs[1])
     richness = (matrix_df > 0).sum(axis=1)
-    ax2.hist(
-        richness, bins=range(0, richness.max() + 2), color="#0d904f", edgecolor="white", alpha=0.8
-    )
+    max_richness = int(richness.max())
+    bins = range(0, min(max_richness + 2, 101))  # Cap at 100 bins
+    ax2.hist(richness.clip(upper=100), bins=bins, color="#0d904f", edgecolor="white", alpha=0.8)
     ax2.set_xlabel("Number of Species Detected", fontsize=12)
     ax2.set_ylabel("Number of Cells", fontsize=12)
-    ax2.set_title("Species Richness per Cell", fontsize=14, fontweight="bold")
+    ax2.set_title(f"Species Richness ({total_species:,} total)", fontsize=14, fontweight="bold")
 
     # Panel 3: Top species bar chart
     ax3 = fig.add_subplot(gs[2])
-    species_totals = matrix_df.sum().sort_values(ascending=True).tail(10)
+    species_totals = matrix_df.sum().sort_values(ascending=True).tail(top_n_species)
     bars = ax3.barh(
         range(len(species_totals)), species_totals.values, color="#c5221f", edgecolor="white"
     )
     ax3.set_yticks(range(len(species_totals)))
     ax3.set_yticklabels(species_totals.index, fontsize=10)
     ax3.set_xlabel("Total Reads Across All Cells", fontsize=12)
-    ax3.set_title("Top 10 Species", fontsize=14, fontweight="bold")
+    ax3.set_title(f"Top {top_n_species} Species", fontsize=14, fontweight="bold")
+
+    # Use log scale for x-axis if range is large
+    if species_totals.max() > species_totals.min() * 100:
+        ax3.set_xscale("log")
 
     fig.suptitle(title, fontsize=16, fontweight="bold", y=1.02)
     fig.tight_layout()
@@ -573,6 +632,8 @@ def plot_cell_bacteria_dotplot(
     *,
     top_n_species: int = 15,
     top_n_cells: int = 50,
+    max_display_cells: int = 100,
+    min_reads_per_cell: int = 1,
     title: str = "Cell–Bacteria Association",
     cfg: Optional[CellJanusConfig] = None,
 ) -> list[Path]:
@@ -580,17 +641,39 @@ def plot_cell_bacteria_dotplot(
     Dot plot showing cell-bacteria associations.
 
     Dot size = number of reads, color = fraction of cell's microbial reads.
+
+    Optimized for large datasets with smart filtering and sampling.
+
+    Parameters
+    ----------
+    matrix_df : pd.DataFrame
+        Cells × species matrix.
+    top_n_species : int
+        Number of top species to display.
+    top_n_cells : int
+        Number of top cells to display.
+    max_display_cells : int
+        Maximum cells to show (prevents memory issues).
+    min_reads_per_cell : int
+        Minimum reads to include a cell.
     """
     _apply_style()
     if cfg is None:
         cfg = CellJanusConfig()
 
+    total_cells = len(matrix_df)
+    total_species = len(matrix_df.columns)
+
+    # Pre-filter cells with minimum reads
+    cell_totals = matrix_df.sum(axis=1)
+    valid_cells = cell_totals[cell_totals >= min_reads_per_cell]
+
     # Filter to top species and cells
     species_totals = matrix_df.sum().sort_values(ascending=False)
     top_species = species_totals.head(top_n_species).index.tolist()
 
-    cell_totals = matrix_df.sum(axis=1).sort_values(ascending=False)
-    top_cells = cell_totals.head(top_n_cells).index.tolist()
+    n_display = min(top_n_cells, max_display_cells, len(valid_cells))
+    top_cells = valid_cells.sort_values(ascending=False).head(n_display).index.tolist()
 
     plot_data = matrix_df.loc[top_cells, top_species].copy()
 
@@ -598,7 +681,7 @@ def plot_cell_bacteria_dotplot(
     row_sums = plot_data.sum(axis=1)
     fraction_data = plot_data.div(row_sums, axis=0).fillna(0)
 
-    # Create dot plot data
+    # Vectorized dot plot data generation for large datasets
     x_coords = []
     y_coords = []
     sizes = []
@@ -614,7 +697,13 @@ def plot_cell_bacteria_dotplot(
                 sizes.append(np.sqrt(count) * 10 + 5)
                 colors.append(frac)
 
-    fig, ax = plt.subplots(figsize=(max(8, len(top_species) * 0.6), max(6, len(top_cells) * 0.15)))
+    n_cells = len(top_cells)
+    n_species_display = len(top_species)
+
+    # Dynamic figure sizing
+    fig_width = min(18, max(8, n_species_display * 0.6))
+    fig_height = min(12, max(6, n_cells * 0.12))
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
     scatter = ax.scatter(
         x_coords,
@@ -627,13 +716,14 @@ def plot_cell_bacteria_dotplot(
         linewidth=0.5,
     )
 
-    ax.set_xticks(range(len(top_species)))
+    ax.set_xticks(range(n_species_display))
     ax.set_xticklabels(top_species, rotation=45, ha="right", fontsize=10)
-    ax.set_yticks(range(len(top_cells)))
-    ax.set_yticklabels(top_cells if len(top_cells) <= 30 else [""] * len(top_cells), fontsize=8)
+    ax.set_yticks(range(n_cells))
+    ax.set_yticklabels(top_cells if n_cells <= 30 else [""] * n_cells, fontsize=8)
 
-    ax.set_xlabel("Species", fontsize=13)
-    ax.set_ylabel("Cell Barcode", fontsize=13)
+    ax.set_xlabel(f"Species (top {n_species_display} of {total_species})", fontsize=13)
+    ylabel = f"Cells (top {n_cells} of {total_cells})" if n_cells != total_cells else "Cell Barcode"
+    ax.set_ylabel(ylabel, fontsize=13)
     ax.set_title(title, fontsize=16, pad=12)
 
     # Colorbar

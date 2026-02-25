@@ -17,7 +17,7 @@
 
 ## Pipeline
 
-### Bulk RNA-seq Mode (default)
+### Bulk RNA-seq Mode
 
 ```
 FASTQ ─→ fastp (QC) ─→ Bowtie2 (host alignment) ─→ unmapped reads
@@ -27,7 +27,7 @@ FASTQ ─→ fastp (QC) ─→ Bowtie2 (host alignment) ─→ unmapped reads
                    (gene expression)        (microbial abundance)
 ```
 
-### scRNA-seq Mode (v0.1.5+)
+### scRNA-seq Mode
 
 ```
 10x FASTQ ─→ Extract CB+UMI ─→ Kraken2 classification ─→ Per-cell abundance
@@ -36,6 +36,8 @@ FASTQ ─→ fastp (QC) ─→ Bowtie2 (host alignment) ─→ unmapped reads
  R1+R2 reads   Cell barcode     Species per read      Cell × Species matrix
                + UMI tags                              Heatmaps + dot plots
 ```
+
+**Features**: Per-cell barcode tracking • UMI deduplication • 6 CSV exports • Large dataset support (10,000+ cells)
 
 ## Contents
 
@@ -117,8 +119,8 @@ All tools should show **✔ Found**. STAR is optional (for future RNA-seq alignm
 The repository includes test data and pre-built reference databases — run the full pipeline immediately with **no downloads required**.
 
 ```bash
-conda activate CellJanus
-cd CellJanus
+conda activate celljanus
+cd celljanus
 
 celljanus run \
     --read1 testdata/reads_R1.fastq.gz \
@@ -177,7 +179,14 @@ celljanus visualize -b results/04_classification/bracken_S.txt -o results/05_vis
 
 ## scRNA-seq Mode
 
-**New in v0.1.5**: CellJanus now supports per-cell microbial abundance tracking for single-cell RNA-seq data from 10x Genomics, Parse Biosciences, and other platforms.
+CellJanus supports per-cell microbial abundance tracking for single-cell RNA-seq data from 10x Genomics, Parse Biosciences, and other platforms.
+
+**Key capabilities**:
+- Extract cell barcodes (CB) and UMIs from 10x Genomics-style FASTQ headers
+- Track microbial abundances per cell barcode with UMI deduplication
+- Generate comprehensive exports: raw counts, normalized values, summaries
+- Optimized for large datasets (10,000+ cells) with smart sampling
+- WSL2 I/O optimization with cross-filesystem detection
 
 ### Quick Start (scRNA-seq)
 
@@ -206,13 +215,29 @@ scrna_results/
 ├── classification/
 │   ├── kraken2_report.txt
 │   └── kraken2_output.txt
-├── cell_species_matrix.csv     # Cells × Species abundance matrix
-├── cell_species_long.csv       # Long-format for ggplot/seaborn
-└── visualisation/plots/
-    ├── cell_species_heatmap.*     # Per-cell abundance heatmap
-    ├── cell_microbe_summary.*     # Summary statistics
-    └── cell_bacteria_dotplot.*    # Cell–bacteria association
+├── tables/                           # Comprehensive data exports
+│   ├── cell_species_counts.csv       # Raw counts (cells × species)
+│   ├── cell_species_normalized.csv   # CPM-normalized (for Seurat/Scanpy)
+│   ├── cell_species_long.csv         # Long format (for ggplot/seaborn)
+│   ├── species_summary.csv           # Per-species statistics
+│   ├── cell_summary.csv              # Per-cell summary (diversity, etc.)
+│   └── pipeline_summary.csv          # Pipeline metrics
+└── plots/
+    ├── cell_species_heatmap.*        # Per-cell abundance heatmap
+    ├── cell_microbe_summary.*        # Distribution summaries (3 panels)
+    └── cell_bacteria_dotplot.*       # Cell–bacteria association
 ```
+
+#### CSV Output Details
+
+| File | Description | Use Case |
+|------|-------------|----------|
+| `cell_species_counts.csv` | Raw read/UMI counts per cell | Downstream analysis, integration |
+| `cell_species_normalized.csv` | CPM-like normalized values | Seurat AddModuleScore, Scanpy |
+| `cell_species_long.csv` | Tidy format (cell, species, count, fraction) | ggplot2, seaborn visualisation |
+| `species_summary.csv` | Species: total reads, n_cells, prevalence, mean/median | Species-level statistics |
+| `cell_summary.csv` | Cell: total reads, n_species, Shannon diversity | Cell-level QC metrics |
+| `pipeline_summary.csv` | Overall pipeline statistics | Quality reports |
 
 ### Python API (scRNA-seq)
 
@@ -242,8 +267,17 @@ result = run_scrnaseq_classification(
 )
 
 # Access per-cell data
-matrix = result["abundance"].to_matrix()   # Cells × Species DataFrame
-summary = result["summary"]                # Statistics dict
+abundance = result["abundance"]
+
+# Different matrix formats
+raw_matrix = abundance.to_matrix()           # Raw counts (cells × species)
+normalized = abundance.to_normalized_matrix() # CPM-like normalized
+long_format = abundance.to_long_format()     # Tidy format for plotting
+
+# Summary statistics
+species_stats = abundance.to_species_summary()  # Per-species statistics
+cell_stats = abundance.to_cell_summary()        # Per-cell metrics (diversity, etc.)
+summary = result["summary"]                     # Overall pipeline statistics
 ```
 
 ---
@@ -481,7 +515,7 @@ sudo cp STAR /usr/local/bin/
 
 ```
 Wang Z (2026). CellJanus: A Dual-Perspective Tool for Deconvolving Host
-Single-Cell and Microbial Transcriptomes. Python package version 0.1.5.
+Single-Cell and Microbial Transcriptomes. Python package.
 https://github.com/zhaoqing-wang/CellJanus
 ```
 

@@ -285,6 +285,35 @@ class CellMicrobialAbundance:
 
         return df
 
+    def to_normalized_matrix(self, min_reads: int = 1, scale: float = 10000.0) -> pd.DataFrame:
+        """
+        Convert to normalized cells × species matrix (CPM-like).
+
+        Each cell's counts are normalized to sum to `scale` (default 10,000).
+        Suitable for downstream analysis with Seurat/Scanpy.
+
+        Parameters
+        ----------
+        min_reads : int
+            Minimum total reads for a cell to be included.
+        scale : float
+            Target sum for each cell (default: 10000 for CPM-like).
+
+        Returns
+        -------
+        DataFrame with normalized abundances.
+        """
+        raw = self.to_matrix(min_reads=min_reads)
+        if len(raw) == 0:
+            return raw
+
+        row_sums = raw.sum(axis=1)
+        # Avoid division by zero
+        row_sums = row_sums.replace(0, 1)
+        normalized = raw.div(row_sums, axis=0) * scale
+
+        return normalized
+
     def to_long_format(self, min_reads: int = 1) -> pd.DataFrame:
         """
         Convert to long-format DataFrame for plotting.
@@ -307,6 +336,112 @@ class CellMicrobialAbundance:
                 )
 
         return pd.DataFrame(rows)
+
+    def to_species_summary(self) -> pd.DataFrame:
+        """
+        Generate species-level summary statistics.
+
+        Returns DataFrame with columns:
+        - species: Species name
+        - total_reads: Total reads across all cells
+        - total_umis: Total UMIs (if available)
+        - n_cells: Number of cells with this species
+        - mean_per_cell: Mean count per positive cell
+        - prevalence: Fraction of cells with this species
+        """
+        species_stats = defaultdict(
+            lambda: {
+                "total_reads": 0,
+                "total_umis": 0,
+                "n_cells": 0,
+                "counts_per_cell": [],
+            }
+        )
+
+        total_cells = len(self.cell_total_reads)
+
+        for cb, species_counts in self.cell_species_counts.items():
+            for sp, count in species_counts.items():
+                species_stats[sp]["total_reads"] += count
+                species_stats[sp]["n_cells"] += 1
+                species_stats[sp]["counts_per_cell"].append(count)
+                # Count UMIs if available
+                if cb in self.cell_species_umis and sp in self.cell_species_umis[cb]:
+                    species_stats[sp]["total_umis"] += len(self.cell_species_umis[cb][sp])
+
+        rows = []
+        for sp, stats in species_stats.items():
+            counts = stats["counts_per_cell"]
+            rows.append(
+                {
+                    "species": sp,
+                    "total_reads": stats["total_reads"],
+                    "total_umis": stats["total_umis"],
+                    "n_cells": stats["n_cells"],
+                    "mean_per_cell": np.mean(counts) if counts else 0,
+                    "median_per_cell": np.median(counts) if counts else 0,
+                    "max_per_cell": max(counts) if counts else 0,
+                    "prevalence_pct": 100 * stats["n_cells"] / total_cells
+                    if total_cells > 0
+                    else 0,
+                }
+            )
+
+        df = pd.DataFrame(rows)
+        if len(df) > 0:
+            df = df.sort_values("total_reads", ascending=False).reset_index(drop=True)
+        return df
+
+    def to_cell_summary(self, min_reads: int = 1) -> pd.DataFrame:
+        """
+        Generate cell-level summary statistics.
+
+        Returns DataFrame with columns:
+        - cell_barcode: Cell barcode
+        - total_microbial_reads: Total microbial reads
+        - n_species: Number of species detected
+        - dominant_species: Most abundant species
+        - dominant_fraction: Fraction of dominant species
+        - shannon_diversity: Shannon diversity index
+        """
+        rows = []
+
+        for cb, species_counts in self.cell_species_counts.items():
+            if self.cell_total_reads[cb] < min_reads:
+                continue
+
+            total = sum(species_counts.values())
+            n_species = len(species_counts)
+
+            if total == 0:
+                continue
+
+            # Find dominant species
+            dominant_sp = max(species_counts.items(), key=lambda x: x[1])
+            dominant_frac = dominant_sp[1] / total
+
+            # Calculate Shannon diversity
+            shannon = 0.0
+            for count in species_counts.values():
+                if count > 0:
+                    p = count / total
+                    shannon -= p * np.log(p)
+
+            rows.append(
+                {
+                    "cell_barcode": cb,
+                    "total_microbial_reads": total,
+                    "n_species": n_species,
+                    "dominant_species": dominant_sp[0],
+                    "dominant_fraction": round(dominant_frac, 4),
+                    "shannon_diversity": round(shannon, 4),
+                }
+            )
+
+        df = pd.DataFrame(rows)
+        if len(df) > 0:
+            df = df.sort_values("total_microbial_reads", ascending=False).reset_index(drop=True)
+        return df
 
     def summary(self) -> dict:
         """Return summary statistics."""
@@ -473,19 +608,50 @@ def run_scrnaseq_classification(
     log.info("[scRNA-seq] Step 3/3: Mapping classifications to cell barcodes")
     abundance = parse_kraken2_output_with_barcodes(output_path, barcode_reads)
 
-    # Export results
-    matrix_path = output_dir / "cell_species_matrix.csv"
-    long_path = output_dir / "cell_species_long.csv"
+    # Export results - comprehensive CSV outputs
+    tables_dir = output_dir / "tables"
+    tables_dir.mkdir(parents=True, exist_ok=True)
 
+    # 1. Raw count matrix (cells × species)
+    matrix_path = tables_dir / "cell_species_counts.csv"
     matrix_df = abundance.to_matrix(min_reads=barcode_cfg.min_reads_per_cell)
     matrix_df.to_csv(matrix_path)
-    log.info(f"[scRNA-seq] Saved cell × species matrix → {matrix_path} ({len(matrix_df)} cells)")
+    log.info(
+        f"[scRNA-seq] Saved raw count matrix → {matrix_path} ({len(matrix_df)} cells × {len(matrix_df.columns)} species)"
+    )
 
+    # 2. Normalized abundance matrix (CPM-like, for Seurat/Scanpy)
+    normalized_path = tables_dir / "cell_species_normalized.csv"
+    normalized_df = abundance.to_normalized_matrix(min_reads=barcode_cfg.min_reads_per_cell)
+    normalized_df.to_csv(normalized_path)
+    log.info(f"[scRNA-seq] Saved normalized matrix → {normalized_path}")
+
+    # 3. Long-format table (for ggplot2/seaborn)
+    long_path = tables_dir / "cell_species_long.csv"
     long_df = abundance.to_long_format(min_reads=barcode_cfg.min_reads_per_cell)
     long_df.to_csv(long_path, index=False)
     log.info(f"[scRNA-seq] Saved long-format table → {long_path}")
 
+    # 4. Species summary statistics
+    species_summary_path = tables_dir / "species_summary.csv"
+    species_summary_df = abundance.to_species_summary()
+    species_summary_df.to_csv(species_summary_path, index=False)
+    log.info(
+        f"[scRNA-seq] Saved species summary → {species_summary_path} ({len(species_summary_df)} species)"
+    )
+
+    # 5. Cell summary statistics
+    cell_summary_path = tables_dir / "cell_summary.csv"
+    cell_summary_df = abundance.to_cell_summary(min_reads=barcode_cfg.min_reads_per_cell)
+    cell_summary_df.to_csv(cell_summary_path, index=False)
+    log.info(f"[scRNA-seq] Saved cell summary → {cell_summary_path}")
+
+    # 6. Pipeline summary
     summary = abundance.summary()
+    summary_path = tables_dir / "pipeline_summary.csv"
+    summary_rows = [{"metric": k, "value": v} for k, v in summary.items()]
+    pd.DataFrame(summary_rows).to_csv(summary_path, index=False)
+
     log.info(
         f"[scRNA-seq] Summary: {summary['cells_with_microbes']} cells with microbes, "
         f"{summary['species_detected']} species detected"
@@ -494,7 +660,11 @@ def run_scrnaseq_classification(
     return {
         "abundance": abundance,
         "matrix_path": matrix_path,
+        "normalized_path": normalized_path,
         "long_path": long_path,
+        "species_summary_path": species_summary_path,
+        "cell_summary_path": cell_summary_path,
+        "matrix_df": matrix_df,
         "barcode_reads": barcode_reads,
         "summary": summary,
     }

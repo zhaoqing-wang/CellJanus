@@ -12,15 +12,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **scRNA-seq support**: New `celljanus scrnaseq` command for per-cell microbial abundance tracking.
   - Parses cell barcodes (CB) and UMIs (UB) from 10x Genomics, Parse Biosciences, and custom formats.
   - Generates cell × species abundance matrix for integration with Seurat/Scanpy.
-  - Outputs: `cell_species_matrix.csv`, `cell_species_long.csv` for downstream analysis.
-- **scRNA-seq visualizations**:
-  - `cell_species_heatmap`: Per-cell microbial abundance heatmap (log₁₀ scale).
-  - `cell_microbe_summary`: Statistics panel showing reads/cell distribution, species richness, top species.
-  - `cell_bacteria_dotplot`: Dot plot of cell–bacteria associations (size = count, color = fraction).
+  - **6 comprehensive CSV outputs**:
+    - `cell_species_counts.csv` — Raw read/UMI counts (cells × species matrix).
+    - `cell_species_normalized.csv` — CPM-like normalized values for Seurat/Scanpy.
+    - `cell_species_long.csv` — Tidy format for ggplot2/seaborn.
+    - `species_summary.csv` — Per-species stats (total reads, n_cells, prevalence, mean/median).
+    - `cell_summary.csv` — Per-cell metrics (total reads, n_species, Shannon diversity).
+    - `pipeline_summary.csv` — Overall pipeline metrics.
+- **scRNA-seq visualizations** (optimized for 10,000+ cells):
+  - `cell_species_heatmap`: Per-cell microbial abundance heatmap with smart sampling (stratified/random/top).
+  - `cell_microbe_summary`: 3-panel summary with log-scale support for large dynamic range.
+  - `cell_bacteria_dotplot`: Dot plot with efficient filtering and dynamic figure sizing.
+- **Large dataset optimizations**:
+  - Smart cell sampling for visualizations (stratified sampling by read depth).
+  - Automatic log-scale axes when data range exceeds 100×.
+  - Memory-efficient figure sizing limits.
 - **WSL2 I/O optimization**:
   - Auto-detection of WSL2 environment.
   - Warnings for cross-filesystem paths (`/mnt/c/`, `/mnt/d/`) with performance recommendations.
   - `wsl2_io_warning()` and `recommend_native_path()` helpers in `scrnaseq` module.
+- **CellMicrobialAbundance class methods**:
+  - `to_matrix()` — Raw counts matrix.
+  - `to_normalized_matrix()` — CPM-like normalized (scale=10000).
+  - `to_long_format()` — Tidy format with count and fraction columns.
+  - `to_species_summary()` — Species-level statistics.
+  - `to_cell_summary()` — Cell-level metrics with Shannon diversity.
 - **New module**: `celljanus/scrnaseq.py` with barcode extraction, `BarcodeConfig`, `CellMicrobialAbundance` classes.
 - **STAR installation guide** in README: conda, pre-built binary, and source compilation methods for WSL2/Linux.
 - **scRNA-seq test data generator**: `generate_scrnaseq_fastq()` function in `tests/generate_test_data.py`.
@@ -29,15 +45,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - README restructured with new sections: scRNA-seq Mode, WSL2 Performance Tips, STAR Installation.
+- README updated with comprehensive CSV output documentation.
 - Pipeline description updated to show both bulk RNA-seq and scRNA-seq workflows.
 - CLI Reference updated with `celljanus scrnaseq` command.
-- Python API documentation expanded with scRNA-seq examples.
+- Python API documentation expanded with full scRNA-seq export examples.
 - Version bumped to 0.1.5.
 
 ### Fixed
 
 - `is_cross_filesystem_path()` now handles cross-platform execution correctly (returns False on native Windows, works properly in WSL2).
 - Test suite platform compatibility fixed for WSL2 detection tests.
+- Unicode subscript characters (`log₁₀`) replaced with LaTeX mathtext (`$\log_{10}$`) for font compatibility.
 
 ## [0.1.4] — 2026-02-24
 
