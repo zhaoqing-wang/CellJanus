@@ -12,7 +12,7 @@ Synthetic paired-end and single-end Illumina FASTQ files for quick testing.
 | `reads_R2.fastq.gz` | Paired-end R2 | 1,000 | ~128 KB |
 | `reads_SE.fastq.gz` | Single-end | 1,000 | ~127 KB |
 
-### scRNA-seq Test Data (v0.1.5+)
+### scRNA-seq Test Data
 
 | File | Description | Reads | Cells |
 |------|-------------|------:|------:|
