@@ -173,7 +173,7 @@ class TestCLI:
         runner = CliRunner()
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "0.1.3" in result.output
+        assert "0.1.5" in result.output
 
     def test_cli_check(self):
         from click.testing import CliRunner
@@ -201,3 +201,104 @@ class TestCLI:
         assert result.exit_code == 0
         assert "--host-index" in result.output
         assert "--kraken2-db" in result.output
+
+    def test_cli_scrnaseq_help(self):
+        from click.testing import CliRunner
+        from celljanus.cli import main
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["scrnaseq", "--help"])
+        assert result.exit_code == 0
+        assert "--barcode-mode" in result.output
+        assert "--kraken2-db" in result.output
+
+
+# ──────────────────────────────────────────────────────────────────────
+# scRNA-seq module tests
+# ──────────────────────────────────────────────────────────────────────
+
+
+class TestScRNASeq:
+    def test_extract_barcode_10x(self):
+        from celljanus.scrnaseq import extract_barcode_10x
+
+        # Test 10x-style header
+        header = "@A00123:456:ABCDEF:1:1101:1000:2000 CB:Z:AAACCTGAGCGATGAC UB:Z:ACTGACTGACTG"
+        cb, umi = extract_barcode_10x(header)
+        assert cb == "AAACCTGAGCGATGAC"
+        assert umi == "ACTGACTGACTG"
+
+    def test_extract_barcode_missing(self):
+        from celljanus.scrnaseq import extract_barcode_10x
+
+        header = "@read1/1"
+        cb, umi = extract_barcode_10x(header)
+        assert cb is None
+        assert umi is None
+
+    def test_barcode_config_defaults(self):
+        from celljanus.scrnaseq import BarcodeConfig
+
+        cfg = BarcodeConfig()
+        assert cfg.mode == "10x"
+        assert cfg.cb_length == 16
+        assert cfg.umi_length == 12
+        assert cfg.min_reads_per_cell == 10
+
+    def test_cell_microbial_abundance(self):
+        from celljanus.scrnaseq import CellMicrobialAbundance
+
+        abundance = CellMicrobialAbundance()
+
+        # Add some classifications
+        abundance.add_classification("CELL1", "E. coli", umi="UMI1")
+        abundance.add_classification("CELL1", "E. coli", umi="UMI2")
+        abundance.add_classification("CELL1", "S. aureus", umi="UMI3")
+        abundance.add_classification("CELL2", "E. coli", umi="UMI4")
+
+        # Test summary
+        summary = abundance.summary()
+        assert summary["total_cells"] == 2
+        assert summary["species_detected"] == 2
+        assert summary["total_microbial_reads"] == 4
+
+    def test_cell_abundance_to_matrix(self):
+        from celljanus.scrnaseq import CellMicrobialAbundance
+
+        abundance = CellMicrobialAbundance()
+        abundance.add_classification("CELL1", "E. coli")
+        abundance.add_classification("CELL1", "E. coli")
+        abundance.add_classification("CELL2", "S. aureus")
+
+        matrix = abundance.to_matrix(min_reads=1)
+        assert len(matrix) == 2
+        assert "E. coli" in matrix.columns or "S. aureus" in matrix.columns
+
+    def test_wsl2_detection(self):
+        from celljanus.scrnaseq import detect_wsl2, is_cross_filesystem_path
+
+        # These are functional tests - results depend on environment
+        wsl2 = detect_wsl2()
+        assert isinstance(wsl2, bool)
+
+        # Test cross-filesystem detection
+        from pathlib import Path
+
+        assert is_cross_filesystem_path(Path("/mnt/c/Users/test")) == True
+        assert is_cross_filesystem_path(Path("/home/user/data")) == False
+
+    def test_generate_scrnaseq_testdata(self, tmp_path):
+        from tests.generate_test_data import generate_scrnaseq_fastq
+
+        result = generate_scrnaseq_fastq(
+            tmp_path / "scrnaseq",
+            n_cells=5,
+            reads_per_cell=20,
+            n_microbe_reads_per_cell=3,
+        )
+
+        assert result["read1"].exists()
+        assert result["read2"].exists()
+        assert result["whitelist"].exists()
+        assert result["n_cells"] == 5
+        assert result["total_reads"] == 5 * 20

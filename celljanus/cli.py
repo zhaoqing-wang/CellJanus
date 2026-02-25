@@ -354,6 +354,124 @@ def visualize_cmd(bracken_file, output_dir, top_n, fmt):
 
 
 # ======================================================================
+# celljanus scrnaseq — scRNA-seq microbial classification
+# ======================================================================
+
+
+@main.command("scrnaseq")
+@click.option(
+    "--read1",
+    "-1",
+    required=True,
+    type=click.Path(exists=True),
+    help="R1 FASTQ with cell barcodes.",
+)
+@click.option(
+    "--read2",
+    "-2",
+    default=None,
+    type=click.Path(exists=True),
+    help="R2 FASTQ with cDNA sequences.",
+)
+@click.option(
+    "--kraken2-db",
+    "-d",
+    required=True,
+    type=click.Path(exists=True),
+    help="Kraken2 database directory.",
+)
+@click.option(
+    "--output-dir",
+    "-o",
+    default="celljanus_scrna_output",
+    type=click.Path(),
+    help="Output directory.",
+)
+@click.option(
+    "--barcode-mode",
+    default="10x",
+    type=click.Choice(["10x", "parse", "auto"]),
+    help="Barcode extraction mode.",
+)
+@click.option(
+    "--whitelist", "-w", default=None, type=click.Path(exists=True), help="Cell barcode whitelist."
+)
+@click.option("--min-reads", default=10, help="Minimum reads per cell to include (default: 10).")
+@click.option("--threads", "-t", default=None, type=int, help="Number of threads.")
+def scrnaseq_cmd(read1, read2, kraken2_db, output_dir, barcode_mode, whitelist, min_reads, threads):
+    """Run scRNA-seq microbial classification with per-cell abundance tracking."""
+    console.print(BANNER, style="bold magenta")
+    console.print("[bold blue]scRNA-seq Mode: Per-Cell Microbial Classification[/bold blue]\n")
+
+    from celljanus.scrnaseq import (
+        BarcodeConfig,
+        run_scrnaseq_classification,
+        detect_wsl2,
+        wsl2_io_warning,
+    )
+    from celljanus.visualize import generate_scrnaseq_plots
+
+    cfg = CellJanusConfig(
+        output_dir=Path(output_dir),
+        kraken2_db=Path(kraken2_db),
+    )
+    if threads:
+        cfg.threads = threads
+    get_logger(cfg.log_file)
+
+    # Check WSL2 I/O performance
+    paths_to_check = [Path(read1)]
+    if read2:
+        paths_to_check.append(Path(read2))
+
+    if detect_wsl2():
+        warning = wsl2_io_warning(paths_to_check)
+        if warning:
+            console.print(f"[yellow]{warning}[/yellow]\n")
+
+    # Configure barcode extraction
+    barcode_cfg = BarcodeConfig(
+        mode=barcode_mode,
+        whitelist_path=Path(whitelist) if whitelist else None,
+        min_reads_per_cell=min_reads,
+    )
+
+    # Run scRNA-seq classification
+    result = run_scrnaseq_classification(
+        Path(read1),
+        Path(kraken2_db),
+        Path(output_dir),
+        read2=Path(read2) if read2 else None,
+        barcode_cfg=barcode_cfg,
+        cfg=cfg,
+    )
+
+    # Generate visualizations
+    import pandas as pd
+
+    matrix_df = pd.read_csv(result["matrix_path"], index_col=0)
+    if len(matrix_df) > 0:
+        vis_dir = Path(output_dir) / "visualisation"
+        plots = generate_scrnaseq_plots(matrix_df, vis_dir, cfg=cfg)
+        console.print(f"[green]Generated {len(plots)} scRNA-seq plots[/green]")
+
+    # Summary table
+    summary = result["summary"]
+    tbl = Table(title="scRNA-seq Microbial Classification Results", show_lines=True)
+    tbl.add_column("Metric", style="bold cyan")
+    tbl.add_column("Value", style="green")
+    tbl.add_row("Total cells processed", f"{summary['total_cells']:,}")
+    tbl.add_row("Cells with microbes", f"{summary['cells_with_microbes']:,}")
+    tbl.add_row("Species detected", f"{summary['species_detected']}")
+    tbl.add_row("Total microbial reads", f"{summary['total_microbial_reads']:,}")
+    tbl.add_row("Mean reads/cell", f"{summary['mean_reads_per_cell']:.1f}")
+    console.print(tbl)
+
+    console.print(f"\n[green]Cell × species matrix: {result['matrix_path']}[/green]")
+    console.print(f"[green]Long-format table: {result['long_path']}[/green]")
+
+
+# ======================================================================
 # celljanus run — full pipeline
 # ======================================================================
 

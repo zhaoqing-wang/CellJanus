@@ -17,6 +17,8 @@
 
 ## Pipeline
 
+### Bulk RNA-seq Mode (default)
+
 ```
 FASTQ ─→ fastp (QC) ─→ Bowtie2 (host alignment) ─→ unmapped reads
                              │                            │
@@ -25,15 +27,28 @@ FASTQ ─→ fastp (QC) ─→ Bowtie2 (host alignment) ─→ unmapped reads
                    (gene expression)        (microbial abundance)
 ```
 
+### scRNA-seq Mode (v0.1.5+)
+
+```
+10x FASTQ ─→ Extract CB+UMI ─→ Kraken2 classification ─→ Per-cell abundance
+    │              │                    │                        │
+    ▼              ▼                    ▼                        ▼
+ R1+R2 reads   Cell barcode     Species per read      Cell × Species matrix
+               + UMI tags                              Heatmaps + dot plots
+```
+
 ## Contents
 
 1. [Installation](#installation)
 2. [Quick Start](#quick-start)
-3. [Real Data](#real-data)
-4. [CLI Reference](#cli-reference)
-5. [Python API](#python-api)
-6. [Output Structure](#output-structure)
-7. [Citation](#citation)
+3. [scRNA-seq Mode](#scrna-seq-mode)
+4. [Real Data](#real-data)
+5. [CLI Reference](#cli-reference)
+6. [Python API](#python-api)
+7. [Output Structure](#output-structure)
+8. [WSL2 Performance](#wsl2-performance-tips)
+9. [STAR Installation](#star-installation-wsl2linux)
+10. [Citation](#citation)
 
 ---
 
@@ -160,6 +175,79 @@ celljanus visualize -b results/04_classification/bracken_S.txt -o results/05_vis
 
 ---
 
+## scRNA-seq Mode
+
+**New in v0.1.5**: CellJanus now supports per-cell microbial abundance tracking for single-cell RNA-seq data from 10x Genomics, Parse Biosciences, and other platforms.
+
+### Quick Start (scRNA-seq)
+
+```bash
+celljanus scrnaseq \
+    --read1 sample_S1_L001_R1_001.fastq.gz \
+    --read2 sample_S1_L001_R2_001.fastq.gz \
+    --kraken2-db ./refs/standard_8 \
+    --output-dir scrna_results \
+    --barcode-mode 10x \
+    --threads 8
+```
+
+### Supported Barcode Formats
+
+| Platform | Mode | Barcode Location |
+|----------|------|------------------|
+| 10x Genomics 3'/5' | `10x` | Read header: `CB:Z:BARCODE UB:Z:UMI` |
+| Parse Biosciences | `parse` | Read name (colon-separated) |
+| Custom | `auto` | Auto-detect from multiple patterns |
+
+### scRNA-seq Output
+
+```
+scrna_results/
+├── classification/
+│   ├── kraken2_report.txt
+│   └── kraken2_output.txt
+├── cell_species_matrix.csv     # Cells × Species abundance matrix
+├── cell_species_long.csv       # Long-format for ggplot/seaborn
+└── visualisation/plots/
+    ├── cell_species_heatmap.*     # Per-cell abundance heatmap
+    ├── cell_microbe_summary.*     # Summary statistics
+    └── cell_bacteria_dotplot.*    # Cell–bacteria association
+```
+
+### Python API (scRNA-seq)
+
+```python
+from pathlib import Path
+from celljanus.scrnaseq import BarcodeConfig, run_scrnaseq_classification
+from celljanus.config import CellJanusConfig
+
+cfg = CellJanusConfig(
+    output_dir=Path("./scrna_results"),
+    kraken2_db=Path("./refs/standard_8"),
+    threads=8,
+)
+
+barcode_cfg = BarcodeConfig(
+    mode="10x",
+    min_reads_per_cell=10,
+)
+
+result = run_scrnaseq_classification(
+    Path("sample_R1.fastq.gz"),
+    Path("./refs/standard_8"),
+    Path("./scrna_results"),
+    read2=Path("sample_R2.fastq.gz"),
+    barcode_cfg=barcode_cfg,
+    cfg=cfg,
+)
+
+# Access per-cell data
+matrix = result["abundance"].to_matrix()   # Cells × Species DataFrame
+summary = result["summary"]                # Statistics dict
+```
+
+---
+
 ## Real Data
 
 ### 1. Download reference databases
@@ -208,6 +296,7 @@ celljanus run \
 | Command | Description |
 |---------|-------------|
 | `celljanus run` | Full pipeline: QC → Align → Classify → Visualize |
+| `celljanus scrnaseq` | **NEW** scRNA-seq mode with per-cell barcode tracking |
 | `celljanus qc` | Quality control (fastp) |
 | `celljanus align` | Host alignment + unmapped extraction (Bowtie2) |
 | `celljanus extract` | Extract unmapped reads from BAM |
@@ -300,11 +389,99 @@ output_dir/
 
 ---
 
+## WSL2 Performance Tips
+
+When running CellJanus on WSL2 (Windows Subsystem for Linux 2), file I/O can be a significant bottleneck when accessing Windows filesystem paths (e.g., `/mnt/c/`, `/mnt/d/`).
+
+### Recommended Workflow
+
+1. **Store data on Linux filesystem**: Copy your FASTQ files to a native Linux path (e.g., `/home/user/data/`) for 10-50× faster I/O performance.
+
+   ```bash
+   # Create workspace on Linux filesystem
+   mkdir -p ~/celljanus_work
+   
+   # Copy data from Windows (one-time)
+   cp /mnt/c/Data/sample_R1.fastq.gz ~/celljanus_work/
+   cp /mnt/c/Data/sample_R2.fastq.gz ~/celljanus_work/
+   
+   # Run pipeline on Linux filesystem
+   celljanus run \
+       -1 ~/celljanus_work/sample_R1.fastq.gz \
+       -2 ~/celljanus_work/sample_R2.fastq.gz \
+       -x ~/refs/bowtie2_index/hg38 \
+       -d ~/refs/kraken2_db \
+       -o ~/celljanus_work/results
+   ```
+
+2. **CellJanus auto-detection**: The `scrnaseq` command automatically detects WSL2 and warns about cross-filesystem paths:
+
+   ```
+   ⚠️  Performance Warning: 2 path(s) are on Windows filesystem (/mnt/...).
+   For better I/O performance, copy data to a native Linux path.
+   ```
+
+3. **Memory-mapped databases**: Store Kraken2 databases on Linux filesystem to enable efficient memory mapping.
+
+---
+
+## STAR Installation (WSL2/Linux)
+
+STAR (Spliced Transcripts Alignment to a Reference) is optional but useful for RNA-seq alignment. Here's how to install it on WSL2 or Linux:
+
+### Method 1: Conda (Recommended)
+
+```bash
+# Install via Bioconda (easiest)
+conda install -c bioconda star=2.7.11b
+
+# Verify installation
+STAR --version
+```
+
+### Method 2: Pre-built Binary
+
+```bash
+# Download pre-compiled binary
+wget https://github.com/alexdobin/STAR/releases/download/2.7.11b/STAR_2.7.11b.zip
+unzip STAR_2.7.11b.zip
+
+# Add to PATH
+sudo cp STAR_2.7.11b/Linux_x86_64_static/STAR /usr/local/bin/
+STAR --version
+```
+
+### Method 3: Compile from Source
+
+```bash
+# Clone and build (requires g++ and make)
+git clone https://github.com/alexdobin/STAR.git
+cd STAR/source
+
+# Compile (adjust threads as needed)
+make -j4 STAR
+
+# Install
+sudo cp STAR /usr/local/bin/
+```
+
+### STAR Hardware Requirements
+
+| Genome | RAM Required | Note |
+|--------|--------------|------|
+| Human (hg38) | 32+ GB | Recommended: 64 GB for large datasets |
+| Mouse (mm10) | 32+ GB | Similar to human |
+| Bacteria | 4-8 GB | Much smaller genomes |
+
+> **Note**: CellJanus currently uses Bowtie2 for host alignment by default. STAR integration for splice-aware RNA-seq alignment is planned for future versions.
+
+---
+
 ## Citation
 
 ```
 Wang Z (2026). CellJanus: A Dual-Perspective Tool for Deconvolving Host
-Single-Cell and Microbial Transcriptomes. Python package version 0.1.4.
+Single-Cell and Microbial Transcriptomes. Python package version 0.1.5.
 https://github.com/zhaoqing-wang/CellJanus
 ```
 

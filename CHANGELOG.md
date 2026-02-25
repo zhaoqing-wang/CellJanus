@@ -5,6 +5,34 @@ All notable changes to CellJanus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] — 2026-02-25
+
+### Added
+
+- **scRNA-seq support**: New `celljanus scrnaseq` command for per-cell microbial abundance tracking.
+  - Parses cell barcodes (CB) and UMIs (UB) from 10x Genomics, Parse Biosciences, and custom formats.
+  - Generates cell × species abundance matrix for integration with Seurat/Scanpy.
+  - Outputs: `cell_species_matrix.csv`, `cell_species_long.csv` for downstream analysis.
+- **scRNA-seq visualizations**:
+  - `cell_species_heatmap`: Per-cell microbial abundance heatmap (log₁₀ scale).
+  - `cell_microbe_summary`: Statistics panel showing reads/cell distribution, species richness, top species.
+  - `cell_bacteria_dotplot`: Dot plot of cell–bacteria associations (size = count, color = fraction).
+- **WSL2 I/O optimization**:
+  - Auto-detection of WSL2 environment.
+  - Warnings for cross-filesystem paths (`/mnt/c/`, `/mnt/d/`) with performance recommendations.
+  - `wsl2_io_warning()` and `recommend_native_path()` helpers in `scrnaseq` module.
+- **New module**: `celljanus/scrnaseq.py` with barcode extraction, `BarcodeConfig`, `CellMicrobialAbundance` classes.
+- **STAR installation guide** in README: conda, pre-built binary, and source compilation methods for WSL2/Linux.
+- **scRNA-seq test data generator**: `generate_scrnaseq_fastq()` function in `tests/generate_test_data.py`.
+
+### Changed
+
+- README restructured with new sections: scRNA-seq Mode, WSL2 Performance Tips, STAR Installation.
+- Pipeline description updated to show both bulk RNA-seq and scRNA-seq workflows.
+- CLI Reference updated with `celljanus scrnaseq` command.
+- Python API documentation expanded with scRNA-seq examples.
+- Version bumped to 0.1.5.
+
 ## [0.1.4] — 2026-02-24
 
 ### Added

@@ -437,6 +437,218 @@ def plot_qc_dashboard(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# 6. scRNA-seq Cell × Species Heatmap
+# ---------------------------------------------------------------------------
+
+
+def plot_cell_species_heatmap(
+    matrix_df: pd.DataFrame,
+    output_path: Path,
+    *,
+    top_n_species: int = 20,
+    top_n_cells: int = 100,
+    title: str = "Per-Cell Microbial Abundance",
+    cfg: Optional[CellJanusConfig] = None,
+) -> list[Path]:
+    """
+    Heatmap showing microbial abundance per cell barcode.
+
+    Parameters
+    ----------
+    matrix_df : pd.DataFrame
+        Cells × species matrix (cell barcodes as index).
+    top_n_species : int
+        Show only top N species by total abundance.
+    top_n_cells : int
+        Show only top N cells by total microbial reads.
+    """
+    _apply_style()
+    if cfg is None:
+        cfg = CellJanusConfig()
+
+    # Filter to top species and cells
+    species_totals = matrix_df.sum().sort_values(ascending=False)
+    top_species = species_totals.head(top_n_species).index.tolist()
+
+    cell_totals = matrix_df.sum(axis=1).sort_values(ascending=False)
+    top_cells = cell_totals.head(top_n_cells).index.tolist()
+
+    plot_data = matrix_df.loc[top_cells, top_species].copy()
+
+    # Log transform for better visualization
+    plot_data_log = np.log10(plot_data + 1)
+
+    n_cells = len(plot_data)
+    n_species = len(top_species)
+
+    fig, ax = plt.subplots(figsize=(max(8, n_species * 0.5), max(6, n_cells * 0.15)))
+
+    sns.heatmap(
+        plot_data_log,
+        cmap="YlOrRd",
+        cbar_kws={"label": "log₁₀(count + 1)", "shrink": 0.6},
+        linewidths=0.1,
+        linecolor="white",
+        ax=ax,
+        xticklabels=True,
+        yticklabels=n_cells <= 50,  # Only show labels for smaller matrices
+    )
+
+    ax.set_title(title, fontsize=16, pad=12)
+    ax.set_xlabel("Species", fontsize=13)
+    ax.set_ylabel("Cell Barcode" if n_cells <= 50 else f"Cells (n={n_cells})", fontsize=13)
+    ax.tick_params(axis="x", rotation=45, labelsize=10)
+    ax.tick_params(axis="y", rotation=0, labelsize=8)
+
+    fig.tight_layout()
+    return _save(fig, output_path, dpi=cfg.dpi)
+
+
+def plot_cell_microbe_summary(
+    matrix_df: pd.DataFrame,
+    output_path: Path,
+    *,
+    title: str = "scRNA-seq Microbial Detection Summary",
+    cfg: Optional[CellJanusConfig] = None,
+) -> list[Path]:
+    """
+    Summary plots for scRNA-seq microbial detection:
+    - Distribution of microbial reads per cell
+    - Species richness per cell
+    - Top species across all cells
+    """
+    _apply_style()
+    if cfg is None:
+        cfg = CellJanusConfig()
+
+    fig = plt.figure(figsize=(16, 5))
+    gs = fig.add_gridspec(1, 3, wspace=0.3)
+
+    # Panel 1: Reads per cell distribution
+    ax1 = fig.add_subplot(gs[0])
+    reads_per_cell = matrix_df.sum(axis=1)
+    ax1.hist(reads_per_cell, bins=50, color="#1a73e8", edgecolor="white", alpha=0.8)
+    ax1.set_xlabel("Microbial Reads per Cell", fontsize=12)
+    ax1.set_ylabel("Number of Cells", fontsize=12)
+    ax1.set_title("Read Depth Distribution", fontsize=14, fontweight="bold")
+    ax1.axvline(
+        reads_per_cell.median(),
+        color="red",
+        linestyle="--",
+        label=f"Median: {reads_per_cell.median():.0f}",
+    )
+    ax1.legend(fontsize=10)
+
+    # Panel 2: Species richness per cell
+    ax2 = fig.add_subplot(gs[1])
+    richness = (matrix_df > 0).sum(axis=1)
+    ax2.hist(
+        richness, bins=range(0, richness.max() + 2), color="#0d904f", edgecolor="white", alpha=0.8
+    )
+    ax2.set_xlabel("Number of Species Detected", fontsize=12)
+    ax2.set_ylabel("Number of Cells", fontsize=12)
+    ax2.set_title("Species Richness per Cell", fontsize=14, fontweight="bold")
+
+    # Panel 3: Top species bar chart
+    ax3 = fig.add_subplot(gs[2])
+    species_totals = matrix_df.sum().sort_values(ascending=True).tail(10)
+    bars = ax3.barh(
+        range(len(species_totals)), species_totals.values, color="#c5221f", edgecolor="white"
+    )
+    ax3.set_yticks(range(len(species_totals)))
+    ax3.set_yticklabels(species_totals.index, fontsize=10)
+    ax3.set_xlabel("Total Reads Across All Cells", fontsize=12)
+    ax3.set_title("Top 10 Species", fontsize=14, fontweight="bold")
+
+    fig.suptitle(title, fontsize=16, fontweight="bold", y=1.02)
+    fig.tight_layout()
+
+    return _save(fig, output_path, dpi=cfg.dpi)
+
+
+def plot_cell_bacteria_dotplot(
+    matrix_df: pd.DataFrame,
+    output_path: Path,
+    *,
+    top_n_species: int = 15,
+    top_n_cells: int = 50,
+    title: str = "Cell–Bacteria Association",
+    cfg: Optional[CellJanusConfig] = None,
+) -> list[Path]:
+    """
+    Dot plot showing cell-bacteria associations.
+
+    Dot size = number of reads, color = fraction of cell's microbial reads.
+    """
+    _apply_style()
+    if cfg is None:
+        cfg = CellJanusConfig()
+
+    # Filter to top species and cells
+    species_totals = matrix_df.sum().sort_values(ascending=False)
+    top_species = species_totals.head(top_n_species).index.tolist()
+
+    cell_totals = matrix_df.sum(axis=1).sort_values(ascending=False)
+    top_cells = cell_totals.head(top_n_cells).index.tolist()
+
+    plot_data = matrix_df.loc[top_cells, top_species].copy()
+
+    # Calculate fraction for each cell
+    row_sums = plot_data.sum(axis=1)
+    fraction_data = plot_data.div(row_sums, axis=0).fillna(0)
+
+    # Create dot plot data
+    x_coords = []
+    y_coords = []
+    sizes = []
+    colors = []
+
+    for i, cell in enumerate(plot_data.index):
+        for j, species in enumerate(plot_data.columns):
+            count = plot_data.loc[cell, species]
+            frac = fraction_data.loc[cell, species]
+            if count > 0:
+                x_coords.append(j)
+                y_coords.append(i)
+                sizes.append(np.sqrt(count) * 10 + 5)
+                colors.append(frac)
+
+    fig, ax = plt.subplots(figsize=(max(8, len(top_species) * 0.6), max(6, len(top_cells) * 0.15)))
+
+    scatter = ax.scatter(
+        x_coords,
+        y_coords,
+        s=sizes,
+        c=colors,
+        cmap="YlOrRd",
+        alpha=0.8,
+        edgecolors="white",
+        linewidth=0.5,
+    )
+
+    ax.set_xticks(range(len(top_species)))
+    ax.set_xticklabels(top_species, rotation=45, ha="right", fontsize=10)
+    ax.set_yticks(range(len(top_cells)))
+    ax.set_yticklabels(top_cells if len(top_cells) <= 30 else [""] * len(top_cells), fontsize=8)
+
+    ax.set_xlabel("Species", fontsize=13)
+    ax.set_ylabel("Cell Barcode", fontsize=13)
+    ax.set_title(title, fontsize=16, pad=12)
+
+    # Colorbar
+    cbar = plt.colorbar(scatter, ax=ax, shrink=0.6)
+    cbar.set_label("Fraction of Cell's Reads", fontsize=11)
+
+    fig.tight_layout()
+    return _save(fig, output_path, dpi=cfg.dpi)
+
+
+# ---------------------------------------------------------------------------
+# Convenience: generate all default plots
+# ---------------------------------------------------------------------------
+
+
 def generate_all_plots(
     bracken_df: pd.DataFrame,
     output_dir: Path,
@@ -455,4 +667,34 @@ def generate_all_plots(
     paths.extend(plot_abundance_bar(bracken_df, output_dir / "abundance_bar.png", cfg=cfg))
     paths.extend(plot_abundance_pie(bracken_df, output_dir / "abundance_pie.png", cfg=cfg))
     paths.extend(plot_taxonomy_heatmap(bracken_df, output_dir / "abundance_heatmap.png", cfg=cfg))
+    return paths
+
+
+def generate_scrnaseq_plots(
+    matrix_df: pd.DataFrame,
+    output_dir: Path,
+    *,
+    cfg: Optional[CellJanusConfig] = None,
+) -> list[Path]:
+    """Generate scRNA-seq specific visualisation outputs."""
+    _apply_style()
+    if cfg is None:
+        cfg = CellJanusConfig()
+
+    output_dir = Path(output_dir) / "plots"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    paths: list[Path] = []
+
+    if len(matrix_df) > 0 and len(matrix_df.columns) > 0:
+        paths.extend(
+            plot_cell_species_heatmap(matrix_df, output_dir / "cell_species_heatmap.png", cfg=cfg)
+        )
+        paths.extend(
+            plot_cell_microbe_summary(matrix_df, output_dir / "cell_microbe_summary.png", cfg=cfg)
+        )
+        paths.extend(
+            plot_cell_bacteria_dotplot(matrix_df, output_dir / "cell_bacteria_dotplot.png", cfg=cfg)
+        )
+
     return paths

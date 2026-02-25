@@ -164,6 +164,145 @@ def generate_test_fastq(
 
 
 # ---------------------------------------------------------------------------
+# scRNA-seq test data generation (10x Genomics style)
+# ---------------------------------------------------------------------------
+
+# Valid 10x barcodes (subset for testing)
+VALID_BARCODES = [
+    "AAACCTGAGCGATGAC",
+    "AAACCTGCATCATCCC",
+    "AAACCTGGTAAATGTG",
+    "AAACCTGTCAACACCA",
+    "AAACGGGAGTAGCAAT",
+    "AAACGGGCACAGGCCT",
+    "AAACGGGCATCGGACC",
+    "AAACGGGTCAGCGATT",
+    "AAACGGGTCCACGTTC",
+    "AAACGGGTCCCAAGTA",
+]
+
+
+def _random_umi(length: int = 12) -> str:
+    """Generate a random UMI."""
+    return "".join(random.choices("ACGT", k=length))
+
+
+def generate_scrnaseq_fastq(
+    output_dir: Path,
+    *,
+    n_cells: int = 10,
+    reads_per_cell: int = 50,
+    n_microbe_reads_per_cell: int = 5,
+    read_length: int = 91,
+) -> dict:
+    """
+    Generate 10x Genomics-style scRNA-seq FASTQ test files.
+
+    R1 contains the cell barcode (16bp) + UMI (12bp)
+    R2 contains the cDNA sequence
+
+    Returns dict with 'read1', 'read2', 'barcodes' keys.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    r1_path = output_dir / "scrna_R1.fastq.gz"
+    r2_path = output_dir / "scrna_R2.fastq.gz"
+
+    records_r1: list[str] = []
+    records_r2: list[str] = []
+    cell_barcodes_used = []
+
+    read_id = 0
+
+    microbe_templates = [STAPH_AUREUS_16S, ECOLI_16S]
+    species_names = ["Staphylococcus_aureus", "Escherichia_coli"]
+
+    for cell_idx in range(min(n_cells, len(VALID_BARCODES))):
+        cell_barcode = VALID_BARCODES[cell_idx]
+        cell_barcodes_used.append(cell_barcode)
+
+        # Host reads for this cell
+        n_host = reads_per_cell - n_microbe_reads_per_cell
+        for _ in range(n_host):
+            read_id += 1
+            umi = _random_umi(12)
+
+            # R1: barcode + UMI + filler
+            r1_seq = cell_barcode + umi + _random_seq(read_length - 28)
+            r1_qual = _random_quality(len(r1_seq), 25, 38)
+
+            # R2: host-like sequence (human gene fragment)
+            r2_seq = HUMAN_BGLOBIN[:read_length]
+            if len(r2_seq) < read_length:
+                r2_seq += _random_seq(read_length - len(r2_seq))
+            r2_qual = _random_quality(len(r2_seq), 25, 38)
+
+            # 10x-style header with CB and UB tags
+            header = f"@A00123:456:ABCDEFGHI:1:1101:{1000 + read_id}:{2000 + read_id} CB:Z:{cell_barcode} UB:Z:{umi}"
+
+            records_r1.append(f"{header}\n{r1_seq}\n+\n{r1_qual}\n")
+            records_r2.append(f"{header}\n{r2_seq}\n+\n{r2_qual}\n")
+
+        # Microbial reads for this cell
+        for _ in range(n_microbe_reads_per_cell):
+            read_id += 1
+            umi = _random_umi(12)
+
+            # Pick random microbe
+            tmpl_idx = random.randint(0, len(microbe_templates) - 1)
+            template = microbe_templates[tmpl_idx]
+
+            # R1: barcode + UMI
+            r1_seq = cell_barcode + umi + _random_seq(read_length - 28)
+            r1_qual = _random_quality(len(r1_seq), 20, 35)
+
+            # R2: microbial sequence
+            r2_seq = template[:read_length]
+            if len(r2_seq) < read_length:
+                r2_seq += _random_seq(read_length - len(r2_seq))
+            # Add slight mutations
+            r2_list = list(r2_seq)
+            for j in range(len(r2_list)):
+                if random.random() < 0.01:
+                    r2_list[j] = random.choice("ACGT")
+            r2_seq = "".join(r2_list)
+            r2_qual = _random_quality(len(r2_seq), 20, 35)
+
+            header = f"@A00123:456:ABCDEFGHI:1:1101:{1000 + read_id}:{2000 + read_id} CB:Z:{cell_barcode} UB:Z:{umi}"
+
+            records_r1.append(f"{header}\n{r1_seq}\n+\n{r1_qual}\n")
+            records_r2.append(f"{header}\n{r2_seq}\n+\n{r2_qual}\n")
+
+    # Shuffle records
+    indices = list(range(len(records_r1)))
+    random.shuffle(indices)
+
+    with gzip.open(r1_path, "wt") as fh:
+        for idx in indices:
+            fh.write(records_r1[idx])
+
+    with gzip.open(r2_path, "wt") as fh:
+        for idx in indices:
+            fh.write(records_r2[idx])
+
+    # Write barcode whitelist
+    whitelist_path = output_dir / "barcodes.txt"
+    with open(whitelist_path, "w") as fh:
+        for bc in cell_barcodes_used:
+            fh.write(f"{bc}\n")
+
+    return {
+        "read1": r1_path,
+        "read2": r2_path,
+        "whitelist": whitelist_path,
+        "n_cells": len(cell_barcodes_used),
+        "total_reads": len(records_r1),
+        "barcodes": cell_barcodes_used,
+    }
+
+
+# ---------------------------------------------------------------------------
 # CLI entry point for generating test data
 # ---------------------------------------------------------------------------
 
@@ -175,3 +314,13 @@ if __name__ == "__main__":
     print(f"Generated test data:")
     for k, v in paths.items():
         print(f"  {k}: {v}  ({v.stat().st_size} bytes)")
+
+    # Also generate scRNA-seq test data
+    scrna_out = out / "scrnaseq"
+    scrna_paths = generate_scrnaseq_fastq(scrna_out)
+    print(f"\nGenerated scRNA-seq test data:")
+    for k, v in scrna_paths.items():
+        if isinstance(v, Path):
+            print(f"  {k}: {v}  ({v.stat().st_size} bytes)")
+        else:
+            print(f"  {k}: {v}")

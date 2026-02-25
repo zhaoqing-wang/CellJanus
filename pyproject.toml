@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "celljanus"
-version = "0.1.4"
-description = "CellJanus: Dual-Perspective Deconvolution of Host and Microbial Transcriptomes from FASTQ Data"
+version = "0.1.5"
+description = "CellJanus: Dual-Perspective Deconvolution of Host and Microbial Transcriptomes from FASTQ Data with scRNA-seq Support"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
