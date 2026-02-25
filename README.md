@@ -143,7 +143,7 @@ celljanus scrnaseq \
 | Mode | Duration | Key Metrics |
 |------|----------|-------------|
 | **Bulk** | ~4s | 1,000 reads → 950 QC-passed (95%) → 5 species detected |
-| **scRNA-seq** | ~2s | 1,500 reads → 30 cells × 7 species → 240 microbial reads |
+| **scRNA-seq** | ~2s | 15,000 reads → 300 cells × 7 species → 2,395 microbial reads |
 
 **Bulk Mode Species Detection:**
 
@@ -155,17 +155,17 @@ celljanus scrnaseq \
 | *Acetitomaculum* | 31 | 10.5% |
 | *Longispora* | 19 | 6.5% |
 
-**scRNA-seq Mode Species Detection:**
+**scRNA-seq Mode Species Detection (300 cells):**
 
 | Species | Reads | Cells | Prevalence |
 |---------|------:|------:|-----------:|
-| *Escherichia coli* | 44 | 23 | 76.7% |
-| *Prevotella* | 42 | 23 | 76.7% |
-| *Staphylococcus aureus* | 40 | 20 | 66.7% |
-| *Klebsiella pneumoniae* | 40 | 23 | 76.7% |
-| *Longispora* | 31 | 14 | 46.7% |
-| *Acetitomaculum* | 29 | 23 | 76.7% |
-| *Mobiluncus* | 14 | 11 | 36.7% |
+| *Escherichia coli* | 460 | 235 | 78.3% |
+| *Prevotella* | 426 | 234 | 78.0% |
+| *Staphylococcus aureus* | 418 | 218 | 72.7% |
+| *Klebsiella pneumoniae* | 405 | 225 | 75.0% |
+| *Acetitomaculum* | 311 | 195 | 65.0% |
+| *Longispora* | 228 | 134 | 44.7% |
+| *Mobiluncus* | 147 | 108 | 36.0% |
 
 ### Example Output
 

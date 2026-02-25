@@ -209,39 +209,21 @@ def generate_test_fastq(
 # scRNA-seq test data generation (10x Genomics style)
 # ---------------------------------------------------------------------------
 
-# Valid 10x barcodes (30 barcodes for testing)
-VALID_BARCODES = [
-    "AAACCTGAGCGATGAC",
-    "AAACCTGCATCATCCC",
-    "AAACCTGGTAAATGTG",
-    "AAACCTGTCAACACCA",
-    "AAACGGGAGTAGCAAT",
-    "AAACGGGCACAGGCCT",
-    "AAACGGGCATCGGACC",
-    "AAACGGGTCAGCGATT",
-    "AAACGGGTCCACGTTC",
-    "AAACGGGTCCCAAGTA",
-    "AAAGCAAAGCGCCTAT",
-    "AAAGCAAAGGATGGAA",
-    "AAAGCAACAGCGAACA",
-    "AAAGCAACATCAGTCA",
-    "AAAGCAACATGGTCAT",
-    "AAAGCAAGTACGCTGC",
-    "AAAGCAAGTAGTGAAT",
-    "AAAGCAAGTTCATGGT",
-    "AAAGCAATCAATAAGG",
-    "AAAGCAATCACCTCGT",
-    "AAAGTAGAGATCGATA",
-    "AAAGTAGAGCGTTGAA",
-    "AAAGTAGCATGACATC",
-    "AAAGTAGGTACCAGTA",
-    "AAAGTAGTCAACACAC",
-    "AAAGTCCTCAGAGACG",
-    "AAAGTCCTCAGCATGT",
-    "AAAGTCCTCAGTGCAT",
-    "AAAGTCCTCGACAGCC",
-    "AAAGTCCTCGGTTAAC",
-]
+
+def _generate_barcodes(n: int = 300) -> list[str]:
+    """Generate n unique 16bp barcodes in 10x Genomics style."""
+    barcodes = set()
+    # Use deterministic seed for reproducibility
+    rng = random.Random(12345)
+    while len(barcodes) < n:
+        # Generate 16bp barcode with realistic nucleotide distribution
+        bc = "".join(rng.choices("ACGT", k=16))
+        barcodes.add(bc)
+    return sorted(list(barcodes))
+
+
+# Generate 300 valid barcodes for testing
+VALID_BARCODES = _generate_barcodes(300)
 
 
 def _random_umi(length: int = 12) -> str:
@@ -252,7 +234,7 @@ def _random_umi(length: int = 12) -> str:
 def generate_scrnaseq_fastq(
     output_dir: Path,
     *,
-    n_cells: int = 30,
+    n_cells: int = 300,
     reads_per_cell: int = 50,
     n_microbe_reads_per_cell: int = 8,
     read_length: int = 91,

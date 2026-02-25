@@ -16,9 +16,9 @@ Synthetic paired-end and single-end Illumina FASTQ files for quick testing.
 
 | File | Description | Reads | Cells |
 |------|-------------|------:|------:|
-| `scrnaseq/scrna_R1.fastq.gz` | 10x-style R1 with CB+UMI | 500 | 10 |
-| `scrnaseq/scrna_R2.fastq.gz` | 10x-style R2 with cDNA | 500 | 10 |
-| `scrnaseq/barcodes.txt` | Cell barcode whitelist | — | 10 |
+| `scrnaseq/scrna_R1.fastq.gz` | 10x-style R1 with CB+UMI | 15,000 | 300 |
+| `scrnaseq/scrna_R2.fastq.gz` | 10x-style R2 with cDNA | 15,000 | 300 |
+| `scrnaseq/barcodes.txt` | Cell barcode whitelist | — | 300 |
 
 ## Read Composition
 
@@ -34,8 +34,8 @@ Synthetic paired-end and single-end Illumina FASTQ files for quick testing.
 
 | Category | Count | Description |
 |----------|------:|-------------|
-| Host reads | 450 (45/cell × 10 cells) | Human gene fragments with cell barcodes |
-| Microbial reads | 50 (5/cell × 10 cells) | *S. aureus*, *E. coli* 16S with cell barcodes |
+| Host reads | 12,600 (42/cell × 300 cells) | Human gene fragments with cell barcodes |
+| Microbial reads | 2,400 (8/cell × 300 cells) | 7 species 16S with cell barcodes |
 
 Headers include 10x-style tags: `CB:Z:AAACCTGAGCGATGAC UB:Z:ACTGACTGACTG`
 
