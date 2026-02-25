@@ -399,8 +399,7 @@ CellJanus auto-detects WSL2 and warns about slow cross-filesystem paths.
 ## Citation
 
 ```
-Wang Z (2026). CellJanus: A Dual-Perspective Tool for Deconvolving Host
-Single-Cell and Microbial Transcriptomes from FASTQ Data.
+Wang Z (2026). CellJanus: A Dual-Perspective Tool for Deconvolving Host Single-Cell and Microbial Transcriptomes from FASTQ Data.
 https://github.com/zhaoqing-wang/CellJanus
 ```
 
