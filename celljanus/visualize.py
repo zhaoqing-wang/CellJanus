@@ -612,13 +612,27 @@ def plot_cell_microbe_summary(
         range(len(species_totals)), species_totals.values, color="#c5221f", edgecolor="white"
     )
     ax3.set_yticks(range(len(species_totals)))
-    ax3.set_yticklabels(species_totals.index, fontsize=10)
+    ax3.set_yticklabels([])  # Remove left y-axis labels
     ax3.set_xlabel("Total Reads Across All Cells", fontsize=12)
     ax3.set_title(f"Top {top_n_species} Species", fontsize=14, fontweight="bold")
 
     # Use log scale for x-axis if range is large
-    if species_totals.max() > species_totals.min() * 100:
+    use_log = species_totals.max() > species_totals.min() * 100
+    if use_log:
         ax3.set_xscale("log")
+
+    # Add species names as text labels on the right side of bars
+    for i, (species, value) in enumerate(species_totals.items()):
+        # Position text at bar end with small offset
+        x_pos = value * 1.05 if use_log else value + species_totals.max() * 0.02
+        ax3.text(x_pos, i, species, va="center", ha="left", fontsize=9, fontweight="medium")
+
+    # Extend x-axis to make room for labels
+    x_max = species_totals.max()
+    if use_log:
+        ax3.set_xlim(right=x_max * 10)  # 10x margin for log scale
+    else:
+        ax3.set_xlim(right=x_max * 2.0)  # 2x margin for linear scale
 
     fig.suptitle(title, fontsize=16, fontweight="bold", y=1.02)
     fig.tight_layout(rect=[0, 0, 1, 0.97])
