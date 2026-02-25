@@ -44,7 +44,7 @@ FASTQ ─→ fastp (QC) ─→ Bowtie2 (host) ─→ unmapped reads ─→ Krake
 ## Contents
 
 1. [Installation](#installation)
-2. [Quick Start](#quick-start)
+2. [Bulk RNA-seq Mode](#bulk-rna-seq-mode)
 3. [scRNA-seq Mode](#scrna-seq-mode)
 4. [CLI Reference](#cli-reference)
 5. [Python API](#python-api)
@@ -113,39 +113,30 @@ celljanus check
 
 ---
 
-## Quick Start
+## Bulk RNA-seq Mode
 
-### Test Data (Built-in)
+Full pipeline: QC → Host alignment → Microbial classification → Visualization.
 
-Run immediately with included test data — **no downloads required**:
+### Quick Test
+
+Run immediately with built-in test data — **no downloads required**:
 
 ```bash
-# Bulk RNA-seq mode
 celljanus run \
     --read1 testdata/reads_R1.fastq.gz \
     --read2 testdata/reads_R2.fastq.gz \
     --host-index testdata/refs/host_genome/host \
     --kraken2-db testdata/refs/kraken2_testdb \
     --output-dir test_results/bulk
-
-# scRNA-seq mode  
-celljanus scrnaseq \
-    --read1 testdata/scrnaseq/scrna_R1.fastq.gz \
-    --read2 testdata/scrnaseq/scrna_R2.fastq.gz \
-    --kraken2-db testdata/refs/kraken2_testdb \
-    --output-dir test_results/scrnaseq \
-    --barcode-mode 10x \
-    --min-reads 1
 ```
 
-### Test Results
+**Test Results** (~4 seconds):
 
-| Mode | Duration | Key Metrics |
-|------|----------|-------------|
-| **Bulk** | ~4s | 1,000 reads → 950 QC-passed (95%) → 5 species detected |
-| **scRNA-seq** | ~2s | 15,000 reads → 300 cells × 7 species → 2,395 microbial reads |
-
-**Bulk Mode Species Detection:**
+| Metric | Value |
+|--------|-------|
+| Input reads | 1,000 |
+| QC-passed | 950 (95%) |
+| Species detected | 5 |
 
 | Species | Reads | Fraction |
 |---------|------:|----------|
@@ -155,21 +146,7 @@ celljanus scrnaseq \
 | *Acetitomaculum* | 31 | 10.5% |
 | *Longispora* | 19 | 6.5% |
 
-**scRNA-seq Mode Species Detection (300 cells):**
-
-| Species | Reads | Cells | Prevalence |
-|---------|------:|------:|-----------:|
-| *Escherichia coli* | 460 | 235 | 78.3% |
-| *Prevotella* | 426 | 234 | 78.0% |
-| *Staphylococcus aureus* | 418 | 218 | 72.7% |
-| *Klebsiella pneumoniae* | 405 | 225 | 75.0% |
-| *Acetitomaculum* | 311 | 195 | 65.0% |
-| *Longispora* | 228 | 134 | 44.7% |
-| *Mobiluncus* | 147 | 108 | 36.0% |
-
-### Example Output
-
-**Bulk RNA-seq:**
+**Example Output:**
 
 | Pipeline Dashboard |
 |:--:|
@@ -182,7 +159,7 @@ celljanus scrnaseq \
 ### Real Data
 
 ```bash
-# 1. Download references
+# 1. Download references (~13 GB total)
 celljanus download hg38 -o ./refs           # Human genome (~5 GB)
 celljanus download kraken2 -o ./refs        # Kraken2 DB (~8 GB)
 
@@ -202,6 +179,8 @@ Per-cell microbial abundance tracking with barcode extraction.
 
 ### Quick Test
 
+Run immediately with built-in test data — **no downloads required**:
+
 ```bash
 celljanus scrnaseq \
     --read1 testdata/scrnaseq/scrna_R1.fastq.gz \
@@ -211,6 +190,36 @@ celljanus scrnaseq \
     --barcode-mode 10x \
     --min-reads 1
 ```
+
+**Test Results** (~2 seconds):
+
+| Metric | Value |
+|--------|-------|
+| Input reads | 15,000 |
+| Cells processed | 300 |
+| Species detected | 7 |
+| Microbial reads | 2,395 |
+| Mean reads/cell | 8.0 |
+
+| Species | Reads | Cells | Prevalence |
+|---------|------:|------:|-----------:|
+| *Escherichia coli* | 460 | 235 | 78.3% |
+| *Prevotella* | 426 | 234 | 78.0% |
+| *Staphylococcus aureus* | 418 | 218 | 72.7% |
+| *Klebsiella pneumoniae* | 405 | 225 | 75.0% |
+| *Acetitomaculum* | 311 | 195 | 65.0% |
+| *Longispora* | 228 | 134 | 44.7% |
+| *Mobiluncus* | 147 | 108 | 36.0% |
+
+**Example Output:**
+
+| scRNA-seq Dashboard |
+|:--:|
+| ![scRNA-seq Dashboard](docs/scrnaseq_dashboard.png) |
+
+| Species Abundance Pie | Microbial Summary |
+|:--:|:--:|
+| ![Abundance Pie](docs/scrnaseq_abundance_pie.png) | ![Summary](docs/cell_microbe_summary.png) |
 
 ### Real Data
 
@@ -230,17 +239,7 @@ celljanus scrnaseq \
 | Parse Biosciences | `parse` | Read name (colon-separated) |
 | Custom | `auto` | Auto-detect |
 
-### scRNA-seq Example Output
-
-| scRNA-seq Dashboard |
-|:--:|
-| ![scRNA-seq Dashboard](docs/scrnaseq_dashboard.png) |
-
-| Species Abundance Pie | Microbial Summary |
-|:--:|:--:|
-| ![Abundance Pie](docs/scrnaseq_abundance_pie.png) | ![Summary](docs/cell_microbe_summary.png) |
-
-### scRNA-seq Output Files
+### Output Files
 
 | File | Description |
 |------|-------------|
@@ -380,15 +379,6 @@ test_results/scrnaseq/
 
 ## Advanced
 
-### Performance
-
-| Component | Memory | Note |
-|-----------|--------|------|
-| fastp | < 1 GB | Streaming I/O |
-| Bowtie2 + hg38 | ~3.5 GB | Memory-mapped |
-| Kraken2 (standard) | ~8 GB | `--memory-mapping` |
-| **Peak total** | **~12-14 GB** | Fits 32 GB laptop |
-
 ### WSL2 Optimization
 
 For best performance on WSL2, store data on the Linux filesystem:
@@ -417,3 +407,7 @@ https://github.com/zhaoqing-wang/CellJanus
 ## License
 
 [MIT](LICENSE)
+
+## Contact
+
+**Author:** Zhaoqing Wang ([ORCID](https://orcid.org/0000-0001-8348-7245)) | **Email:** <zhaoqingwang@mail.sdu.edu.cn> | **Issues:** [GitHub Issues](https://github.com/zhaoqing-wang/CellJanus/issues)
