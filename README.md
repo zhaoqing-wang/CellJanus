@@ -134,23 +134,38 @@ celljanus scrnaseq \
     --read2 testdata/scrnaseq/scrna_R2.fastq.gz \
     --kraken2-db testdata/refs/kraken2_testdb \
     --output-dir test_results/scrnaseq \
-    --barcode-mode 10x
+    --barcode-mode 10x \
+    --min-reads 1
 ```
 
 ### Test Results
 
 | Mode | Duration | Key Metrics |
 |------|----------|-------------|
-| **Bulk** | ~4s | 1,000 reads → 900 QC-passed (90%) → 3 species detected |
-| **scRNA-seq** | ~2s | 500 reads → 10 cells with microbes → 2 species |
+| **Bulk** | ~4s | 1,000 reads → 950 QC-passed (95%) → 5 species detected |
+| **scRNA-seq** | ~2s | 1,500 reads → 30 cells × 7 species → 240 microbial reads |
 
 **Bulk Mode Species Detection:**
 
 | Species | Reads | Fraction |
 |---------|------:|----------|
-| *Staphylococcus aureus* | 116 | 38.7% |
-| *Klebsiella pneumoniae* | 94 | 31.3% |
-| *Escherichia coli* | 90 | 30.0% |
+| *Staphylococcus aureus* | 109 | 37.1% |
+| *Escherichia coli* | 79 | 26.9% |
+| *Klebsiella pneumoniae* | 56 | 19.0% |
+| *Acetitomaculum* | 31 | 10.5% |
+| *Longispora* | 19 | 6.5% |
+
+**scRNA-seq Mode Species Detection:**
+
+| Species | Reads | Cells | Prevalence |
+|---------|------:|------:|-----------:|
+| *Escherichia coli* | 44 | 23 | 76.7% |
+| *Prevotella* | 42 | 23 | 76.7% |
+| *Staphylococcus aureus* | 40 | 20 | 66.7% |
+| *Klebsiella pneumoniae* | 40 | 23 | 76.7% |
+| *Longispora* | 31 | 14 | 46.7% |
+| *Acetitomaculum* | 29 | 23 | 76.7% |
+| *Mobiluncus* | 14 | 11 | 36.7% |
 
 ### Example Output
 
@@ -193,7 +208,8 @@ celljanus scrnaseq \
     --read2 testdata/scrnaseq/scrna_R2.fastq.gz \
     --kraken2-db testdata/refs/kraken2_testdb \
     --output-dir test_results/scrnaseq \
-    --barcode-mode 10x
+    --barcode-mode 10x \
+    --min-reads 1
 ```
 
 ### Real Data
@@ -353,12 +369,10 @@ test_results/scrnaseq/
 │   ├── species_summary.csv       # Per-species statistics
 │   ├── cell_summary.csv          # Per-cell diversity metrics
 │   └── pipeline_summary.csv      # Pipeline metrics
-├── visualisation/plots/          # Figures (5 PNG + 5 PDF)
+├── visualisation/plots/          # Figures (3 PNG + 3 PDF)
 │   ├── scrnaseq_dashboard.*      # Summary dashboard
 │   ├── scrnaseq_abundance_pie.*  # Community composition donut
-│   ├── cell_species_heatmap.*    # Per-cell abundance heatmap
-│   ├── cell_microbe_summary.*    # Distribution panels (3-panel)
-│   └── cell_bacteria_dotplot.*   # Cell–bacteria association
+│   └── cell_microbe_summary.*    # Distribution panels (3-panel)
 └── celljanus.log                 # Pipeline log
 ```
 
