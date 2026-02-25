@@ -169,11 +169,12 @@ class TestCLI:
     def test_cli_version(self):
         from click.testing import CliRunner
         from celljanus.cli import main
+        from celljanus import __version__
 
         runner = CliRunner()
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "0.1.5" in result.output
+        assert __version__ in result.output
 
     def test_cli_check(self):
         from click.testing import CliRunner

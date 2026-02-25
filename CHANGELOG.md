@@ -5,6 +5,47 @@ All notable changes to CellJanus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] — 2026-02-25
+
+### Added
+
+- **scRNA-seq Dashboard**: New `plot_scrnaseq_dashboard()` function with 4-panel summary:
+  - Top species abundance bar chart
+  - Per-cell read depth distribution (histogram with mean/median lines)
+  - Species prevalence across cells (horizontal bar chart)
+  - Key metrics text panel (cells, species, total reads, mean reads/cell)
+- **scRNA-seq Abundance Pie**: New `plot_scrnaseq_abundance_pie()` donut chart showing overall community composition.
+- **Expanded test data**: 7 bacterial species (added Prevotella, Acetitomaculum, Longispora, Mobiluncus) with 16S rRNA sequences.
+- **300-cell scRNA-seq test**: Expanded from 10 cells to 300 cells with 15,000 reads across 5 abundance profiles.
+- **Dynamic barcode generation**: `_generate_barcodes()` function creates n unique 16bp barcodes for arbitrary test sizes.
+
+### Changed
+
+- **README reorganized**: Unified structure for both modes:
+  - Each mode (Bulk, scRNA-seq) now follows: Quick Test → Results → Example Output → Real Data
+  - Removed duplicate scRNA-seq sections
+  - Updated Contents with clearer navigation
+- **Microbial Summary plot improved**: Species names now displayed on right side of bars in Panel 3 (Top Species), avoiding duplication with Panel 2.
+- **scRNA-seq visualizations streamlined**: Reduced from 5 plots to 3 optimized plots:
+  - `scrnaseq_dashboard` — 4-panel summary dashboard
+  - `scrnaseq_abundance_pie` — Community composition donut
+  - `cell_microbe_summary` — 3-panel distribution summary
+- **Removed heatmap and dotplot for scRNA-seq**: `cell_species_heatmap` and `cell_bacteria_dotplot` removed as they don't scale well for 5,000+ cells typical in real scRNA-seq data.
+- **Test results updated**: Documentation now reflects 300 cells × 7 species × 2,395 microbial reads.
+
+### Fixed
+
+- **Panel 3 species labels**: Species names moved from left y-axis to bar-end text labels for cleaner visualization.
+- **X-axis margin**: Extended x-axis limits (2× linear, 10× log) to accommodate species name labels.
+
+### Tested
+
+- **WSL2 validation** (Ubuntu 24.04):
+  - Bulk pipeline: 1,000 reads → 950 QC-passed → 5 species detected (~4s)
+  - scRNA-seq pipeline: 15,000 reads → 300 cells × 7 species → 2,395 microbial reads (~2s)
+  - All 3 scRNA-seq plots generated successfully
+  - test_results/ and docs/ images updated
+
 ## [0.1.5] — 2026-02-25
 
 ### Added
