@@ -276,16 +276,24 @@ class TestScRNASeq:
 
     def test_wsl2_detection(self):
         from celljanus.scrnaseq import detect_wsl2, is_cross_filesystem_path
+        import platform
 
         # These are functional tests - results depend on environment
         wsl2 = detect_wsl2()
         assert isinstance(wsl2, bool)
 
         # Test cross-filesystem detection
+        # On native Windows, these functions return False since they're designed for WSL2
         from pathlib import Path
 
-        assert is_cross_filesystem_path(Path("/mnt/c/Users/test")) == True
-        assert is_cross_filesystem_path(Path("/home/user/data")) == False
+        if platform.system() == "Windows":
+            # On Windows, is_cross_filesystem_path always returns False
+            assert is_cross_filesystem_path(Path("/mnt/c/Users/test")) == False
+            assert is_cross_filesystem_path(Path("/home/user/data")) == False
+        else:
+            # On Linux/WSL2, check actual path patterns
+            assert is_cross_filesystem_path(Path("/mnt/c/Users/test")) == True
+            assert is_cross_filesystem_path(Path("/home/user/data")) == False
 
     def test_generate_scrnaseq_testdata(self, tmp_path):
         from tests.generate_test_data import generate_scrnaseq_fastq

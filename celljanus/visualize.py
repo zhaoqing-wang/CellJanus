@@ -296,7 +296,7 @@ def plot_taxonomy_heatmap(
         fmt=".0f",
         annot_kws={"fontsize": 12},
         cmap="YlOrRd",
-        cbar_kws={"label": "log₁₀(reads)", "shrink": 0.6},
+        cbar_kws={"label": r"$\log_{10}$(reads)", "shrink": 0.6},
         linewidths=0.8,
         linecolor="white",
         ax=ax,
@@ -487,7 +487,7 @@ def plot_cell_species_heatmap(
     sns.heatmap(
         plot_data_log,
         cmap="YlOrRd",
-        cbar_kws={"label": "log₁₀(count + 1)", "shrink": 0.6},
+        cbar_kws={"label": r"$\log_{10}$(count + 1)", "shrink": 0.6},
         linewidths=0.1,
         linecolor="white",
         ax=ax,

@@ -528,9 +528,24 @@ def is_cross_filesystem_path(path: Path) -> bool:
 
     Paths under /mnt/c, /mnt/d, etc. are Windows filesystems with
     slower I/O performance.
+
+    Note: This function is designed to run inside WSL2. On native Windows,
+    it will always return False as the path resolution differs.
     """
-    path_str = str(path.resolve())
-    return path_str.startswith("/mnt/")
+    import platform
+
+    # On native Windows, this check doesn't apply
+    if platform.system() == "Windows":
+        return False
+
+    # Use string representation, try both resolved and original
+    path_str = str(path)
+    try:
+        resolved_str = str(path.resolve())
+    except (OSError, ValueError):
+        resolved_str = path_str
+
+    return path_str.startswith("/mnt/") or resolved_str.startswith("/mnt/")
 
 
 def recommend_native_path(path: Path, workspace: str = "/home") -> Path:

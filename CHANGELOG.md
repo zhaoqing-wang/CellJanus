@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **New module**: `celljanus/scrnaseq.py` with barcode extraction, `BarcodeConfig`, `CellMicrobialAbundance` classes.
 - **STAR installation guide** in README: conda, pre-built binary, and source compilation methods for WSL2/Linux.
 - **scRNA-seq test data generator**: `generate_scrnaseq_fastq()` function in `tests/generate_test_data.py`.
+- **Test suite expanded**: 26 tests covering scRNA-seq barcode extraction, cell abundance tracking, CLI commands.
 
 ### Changed
 
@@ -32,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI Reference updated with `celljanus scrnaseq` command.
 - Python API documentation expanded with scRNA-seq examples.
 - Version bumped to 0.1.5.
+
+### Fixed
+
+- `is_cross_filesystem_path()` now handles cross-platform execution correctly (returns False on native Windows, works properly in WSL2).
+- Test suite platform compatibility fixed for WSL2 detection tests.
 
 ## [0.1.4] — 2026-02-24
 
