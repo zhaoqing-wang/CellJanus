@@ -243,7 +243,7 @@ class TestScRNASeq:
         assert cfg.mode == "10x"
         assert cfg.cb_length == 16
         assert cfg.umi_length == 12
-        assert cfg.min_reads_per_cell == 10
+        assert cfg.min_reads_per_cell == 1
 
     def test_cell_microbial_abundance(self):
         from celljanus.scrnaseq import CellMicrobialAbundance

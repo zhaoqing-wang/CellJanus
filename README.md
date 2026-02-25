@@ -154,13 +154,15 @@ celljanus scrnaseq \
 
 ### Example Output
 
-| Pipeline Dashboard | Abundance Bar | Abundance Heatmap |
-|:--:|:--:|:--:|
-| ![Dashboard](docs/pipeline_dashboard.png) | ![Bar](docs/abundance_bar.png) | ![Heatmap](docs/abundance_heatmap.png) |
+**Bulk RNA-seq:**
 
-| Abundance Pie |
+| Pipeline Dashboard |
 |:--:|
-| ![Pie](docs/abundance_pie.png) |
+| ![Dashboard](docs/pipeline_dashboard.png) |
+
+| Abundance Bar | Abundance Pie | Abundance Heatmap |
+|:--:|:--:|:--:|
+| ![Bar](docs/abundance_bar.png) | ![Pie](docs/abundance_pie.png) | ![Heatmap](docs/abundance_heatmap.png) |
 
 ### Real Data
 
@@ -211,6 +213,20 @@ celljanus scrnaseq \
 | 10x Genomics | `10x` | Header: `CB:Z:BARCODE UB:Z:UMI` |
 | Parse Biosciences | `parse` | Read name (colon-separated) |
 | Custom | `auto` | Auto-detect |
+
+### scRNA-seq Example Output
+
+| scRNA-seq Dashboard |
+|:--:|
+| ![scRNA-seq Dashboard](docs/scrnaseq_dashboard.png) |
+
+| Abundance Pie | Cell–Species Heatmap |
+|:--:|:--:|
+| ![Abundance Pie](docs/scrnaseq_abundance_pie.png) | ![Heatmap](docs/cell_species_heatmap.png) |
+
+| Microbial Summary | Cell–Bacteria Dotplot |
+|:--:|:--:|
+| ![Summary](docs/cell_microbe_summary.png) | ![Dotplot](docs/cell_bacteria_dotplot.png) |
 
 ### scRNA-seq Output Files
 
@@ -283,7 +299,7 @@ result = run_scrnaseq_classification(
     Path("./refs/standard_8"),
     Path("./scrna_results"),
     read2=Path("sample_R2.fastq.gz"),
-    barcode_cfg=BarcodeConfig(mode="10x", min_reads_per_cell=10),
+    barcode_cfg=BarcodeConfig(mode="10x"),
 )
 
 # Access data
@@ -298,24 +314,56 @@ abundance.to_cell_summary()       # Cell diversity metrics
 
 ## Output Structure
 
+### Bulk RNA-seq
+
 ```
-output_dir/
+test_results/bulk/
 ├── 01_qc/                        # Quality control (fastp)
-│   ├── *_qc.fastq.gz
-│   └── *_fastp.{json,html}
+│   ├── *_qc.fastq.gz            # Trimmed reads
+│   ├── *_fastp.json              # QC metrics (machine-readable)
+│   └── *_fastp.html              # QC report (interactive)
 ├── 02_alignment/                 # Host alignment (Bowtie2)
-│   ├── host_aligned.sorted.bam
-│   └── unmapped_R{1,2}.fastq.gz
+│   ├── host_aligned.sorted.bam   # Full alignment
+│   ├── host_mapped.sorted.bam    # Host-only reads
+│   ├── unmapped_R{1,2}.fastq.gz  # Non-host → classification
+│   └── host_align_stats.txt      # Alignment statistics
 ├── 04_classification/            # Microbial classification
-│   ├── kraken2_report.txt
-│   └── bracken_S.txt
-├── 05_visualisation/plots/       # Figures (PNG + PDF)
-│   ├── abundance_{bar,pie,heatmap}.*
-│   └── pipeline_dashboard.*
-├── 06_tables/                    # Results
-│   ├── species_abundance.csv
-│   └── pipeline_summary.csv
-└── celljanus.log
+│   ├── kraken2_report.txt        # Taxonomic report
+│   ├── kraken2_output.txt        # Per-read assignments
+│   └── bracken_S.txt             # Species-level abundance
+├── 05_visualisation/plots/       # Figures (4 PNG + 4 PDF)
+│   ├── abundance_bar.*           # Top species bar chart
+│   ├── abundance_pie.*           # Donut chart
+│   ├── abundance_heatmap.*       # Heatmap (log₁₀)
+│   └── pipeline_dashboard.*      # Summary dashboard
+├── 06_tables/                    # Machine-readable results
+│   ├── species_abundance.csv     # Species × reads × fraction
+│   ├── pipeline_summary.csv      # Per-step metrics
+│   └── output_manifest.csv       # File inventory
+└── celljanus.log                 # Pipeline log
+```
+
+### scRNA-seq
+
+```
+test_results/scrnaseq/
+├── classification/               # Kraken2 output
+│   ├── kraken2_report.txt        # Taxonomic report
+│   └── kraken2_output.txt        # Per-read assignments
+├── tables/                       # 6 CSV exports
+│   ├── cell_species_counts.csv   # Raw counts (cells × species)
+│   ├── cell_species_normalized.csv # CPM-normalized (Seurat/Scanpy)
+│   ├── cell_species_long.csv     # Tidy format (ggplot2/seaborn)
+│   ├── species_summary.csv       # Per-species statistics
+│   ├── cell_summary.csv          # Per-cell diversity metrics
+│   └── pipeline_summary.csv      # Pipeline metrics
+├── visualisation/plots/          # Figures (5 PNG + 5 PDF)
+│   ├── scrnaseq_dashboard.*      # Summary dashboard
+│   ├── scrnaseq_abundance_pie.*  # Community composition donut
+│   ├── cell_species_heatmap.*    # Per-cell abundance heatmap
+│   ├── cell_microbe_summary.*    # Distribution panels (3-panel)
+│   └── cell_bacteria_dotplot.*   # Cell–bacteria association
+└── celljanus.log                 # Pipeline log
 ```
 
 ---

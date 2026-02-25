@@ -62,7 +62,7 @@ class BarcodeConfig:
     whitelist_path: Optional[Path] = None  # Path to barcode whitelist
 
     # Filtering thresholds
-    min_reads_per_cell: int = 10  # Minimum reads to consider a cell valid
+    min_reads_per_cell: int = 1  # Minimum reads to consider a cell valid
     min_umi_per_species: int = 1  # Minimum UMIs per species per cell
 
 

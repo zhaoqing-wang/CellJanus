@@ -621,7 +621,7 @@ def plot_cell_microbe_summary(
         ax3.set_xscale("log")
 
     fig.suptitle(title, fontsize=16, fontweight="bold", y=1.02)
-    fig.tight_layout()
+    fig.tight_layout(rect=[0, 0, 1, 0.97])
 
     return _save(fig, output_path, dpi=cfg.dpi)
 
@@ -760,10 +760,210 @@ def generate_all_plots(
     return paths
 
 
+def plot_scrnaseq_dashboard(
+    matrix_df: pd.DataFrame,
+    output_path: Path,
+    *,
+    species_summary_df: Optional[pd.DataFrame] = None,
+    cell_summary_df: Optional[pd.DataFrame] = None,
+    pipeline_summary: Optional[dict] = None,
+    title: str = "scRNA-seq Microbial Detection Dashboard",
+    cfg: Optional[CellJanusConfig] = None,
+) -> list[Path]:
+    """
+    Dashboard summarising scRNA-seq microbial detection results.
+
+    Four panels:
+    1. Top species abundance bar chart
+    2. Per-cell read depth distribution
+    3. Species prevalence (fraction of cells)
+    4. Key metrics text panel
+    """
+    _apply_style()
+    if cfg is None:
+        cfg = CellJanusConfig()
+
+    fig = plt.figure(figsize=(16, 10))
+    gs = fig.add_gridspec(2, 2, hspace=0.35, wspace=0.3)
+
+    total_cells = len(matrix_df)
+    total_species = len(matrix_df.columns)
+
+    # ── Panel 1: Top species bar chart ──
+    ax1 = fig.add_subplot(gs[0, 0])
+    species_totals = matrix_df.sum().sort_values(ascending=True)
+    top_sp = species_totals.tail(min(15, total_species))
+    colors_bar = plt.cm.YlOrRd(np.linspace(0.3, 0.9, len(top_sp)))
+    ax1.barh(range(len(top_sp)), top_sp.values, color=colors_bar, edgecolor="white")
+    ax1.set_yticks(range(len(top_sp)))
+    ax1.set_yticklabels([s[:35] for s in top_sp.index], fontsize=9)
+    ax1.set_xlabel("Total Reads", fontsize=11)
+    ax1.set_title("Species Abundance", fontsize=14, fontweight="bold")
+    for i, v in enumerate(top_sp.values):
+        ax1.text(v + max(top_sp.values) * 0.01, i, f"{int(v)}", va="center", fontsize=9)
+
+    # ── Panel 2: Reads per cell distribution ──
+    ax2 = fig.add_subplot(gs[0, 1])
+    reads_per_cell = matrix_df.sum(axis=1)
+    if len(reads_per_cell) > 0:
+        n_bins = min(50, max(10, int(reads_per_cell.max() - reads_per_cell.min() + 1)))
+        ax2.hist(reads_per_cell, bins=n_bins, color="#1a73e8", edgecolor="white", alpha=0.85)
+        ax2.axvline(
+            reads_per_cell.median(),
+            color="red",
+            linestyle="--",
+            linewidth=1.5,
+            label=f"Median: {reads_per_cell.median():.0f}",
+        )
+        ax2.axvline(
+            reads_per_cell.mean(),
+            color="orange",
+            linestyle=":",
+            linewidth=1.5,
+            label=f"Mean: {reads_per_cell.mean():.1f}",
+        )
+        ax2.legend(fontsize=9)
+    ax2.set_xlabel("Microbial Reads per Cell", fontsize=11)
+    ax2.set_ylabel("Number of Cells", fontsize=11)
+    ax2.set_title("Per-Cell Read Depth", fontsize=14, fontweight="bold")
+
+    # ── Panel 3: Species prevalence (% cells with each species) ──
+    ax3 = fig.add_subplot(gs[1, 0])
+    prevalence = (matrix_df > 0).sum() / total_cells * 100
+    prevalence = prevalence.sort_values(ascending=True).tail(min(15, total_species))
+    colors_prev = plt.cm.Greens(np.linspace(0.3, 0.9, len(prevalence)))
+    ax3.barh(range(len(prevalence)), prevalence.values, color=colors_prev, edgecolor="white")
+    ax3.set_yticks(range(len(prevalence)))
+    ax3.set_yticklabels([s[:35] for s in prevalence.index], fontsize=9)
+    ax3.set_xlabel("Cell Prevalence (%)", fontsize=11)
+    ax3.set_title("Species Prevalence", fontsize=14, fontweight="bold")
+    ax3.set_xlim(0, 105)
+    for i, v in enumerate(prevalence.values):
+        ax3.text(v + 1, i, f"{v:.0f}%", va="center", fontsize=9)
+
+    # ── Panel 4: Key metrics ──
+    ax4 = fig.add_subplot(gs[1, 1])
+    ax4.axis("off")
+
+    if pipeline_summary is None:
+        pipeline_summary = {
+            "total_cells": total_cells,
+            "species_detected": total_species,
+            "total_microbial_reads": int(matrix_df.sum().sum()),
+            "mean_reads_per_cell": float(reads_per_cell.mean()) if len(reads_per_cell) > 0 else 0,
+        }
+
+    richness = (matrix_df > 0).sum(axis=1)
+
+    metrics = [
+        ("Total Cells", f"{total_cells:,}"),
+        ("Species Detected", f"{total_species}"),
+        (
+            "Total Microbial Reads",
+            f"{pipeline_summary.get('total_microbial_reads', int(matrix_df.sum().sum())):,}",
+        ),
+        ("Mean Reads / Cell", f"{pipeline_summary.get('mean_reads_per_cell', 0):.1f}"),
+        (
+            "Median Reads / Cell",
+            f"{reads_per_cell.median():.0f}" if len(reads_per_cell) > 0 else "0",
+        ),
+        ("Mean Species / Cell", f"{richness.mean():.1f}" if len(richness) > 0 else "0"),
+        ("Max Species / Cell", f"{richness.max()}" if len(richness) > 0 else "0"),
+    ]
+
+    y_pos = 0.92
+    ax4.text(
+        0.5,
+        y_pos + 0.06,
+        "Key Metrics",
+        transform=ax4.transAxes,
+        fontsize=14,
+        fontweight="bold",
+        ha="center",
+        va="top",
+    )
+    for label, value in metrics:
+        ax4.text(
+            0.15, y_pos, label, transform=ax4.transAxes, fontsize=12, va="top", fontweight="medium"
+        )
+        ax4.text(
+            0.85,
+            y_pos,
+            value,
+            transform=ax4.transAxes,
+            fontsize=12,
+            va="top",
+            ha="right",
+            color="#1a73e8",
+            fontweight="bold",
+        )
+        y_pos -= 0.12
+
+    fig.suptitle(title, fontsize=18, fontweight="bold", y=1.01)
+    fig.tight_layout(rect=[0, 0, 1, 0.97])
+
+    return _save(fig, output_path, dpi=cfg.dpi)
+
+
+def plot_scrnaseq_abundance_pie(
+    matrix_df: pd.DataFrame,
+    output_path: Path,
+    *,
+    top_n: int = 10,
+    title: str = "Microbial Community Composition (All Cells)",
+    cfg: Optional[CellJanusConfig] = None,
+) -> list[Path]:
+    """Donut chart of total microbial composition across all cells."""
+    _apply_style()
+    if cfg is None:
+        cfg = CellJanusConfig()
+
+    species_totals = matrix_df.sum().sort_values(ascending=False)
+    top = species_totals.head(top_n)
+    if len(species_totals) > top_n:
+        other = species_totals.iloc[top_n:].sum()
+        top = pd.concat([top, pd.Series({"Other": other})])
+
+    colors = plt.cm.Set3(np.linspace(0, 1, len(top)))
+    fig, ax = plt.subplots(figsize=(8, 8))
+    wedges, texts, autotexts = ax.pie(
+        top.values,
+        labels=None,
+        colors=colors,
+        autopct=lambda p: f"{p:.1f}%" if p > 3 else "",
+        startangle=140,
+        pctdistance=0.82,
+        wedgeprops=dict(width=0.4, edgecolor="white", linewidth=2),
+    )
+
+    for t in autotexts:
+        t.set_fontsize(11)
+        t.set_fontweight("bold")
+
+    ax.legend(
+        wedges,
+        [f"{s[:30]} ({int(v)})" for s, v in zip(top.index, top.values)],
+        title="Species (reads)",
+        loc="center left",
+        bbox_to_anchor=(1, 0.5),
+        fontsize=10,
+    )
+
+    total = int(species_totals.sum())
+    ax.text(0, 0, f"{total:,}\nreads", ha="center", va="center", fontsize=16, fontweight="bold")
+    ax.set_title(title, fontsize=16, pad=20)
+
+    fig.tight_layout()
+    return _save(fig, output_path, dpi=cfg.dpi)
+
+
 def generate_scrnaseq_plots(
     matrix_df: pd.DataFrame,
     output_dir: Path,
     *,
+    species_summary_df: Optional[pd.DataFrame] = None,
+    cell_summary_df: Optional[pd.DataFrame] = None,
+    pipeline_summary: Optional[dict] = None,
     cfg: Optional[CellJanusConfig] = None,
 ) -> list[Path]:
     """Generate scRNA-seq specific visualisation outputs."""
@@ -777,12 +977,34 @@ def generate_scrnaseq_plots(
     paths: list[Path] = []
 
     if len(matrix_df) > 0 and len(matrix_df.columns) > 0:
+        # Dashboard (like bulk pipeline_dashboard)
+        paths.extend(
+            plot_scrnaseq_dashboard(
+                matrix_df,
+                output_dir / "scrnaseq_dashboard.png",
+                species_summary_df=species_summary_df,
+                cell_summary_df=cell_summary_df,
+                pipeline_summary=pipeline_summary,
+                cfg=cfg,
+            )
+        )
+        # Donut chart
+        paths.extend(
+            plot_scrnaseq_abundance_pie(
+                matrix_df,
+                output_dir / "scrnaseq_abundance_pie.png",
+                cfg=cfg,
+            )
+        )
+        # Heatmap
         paths.extend(
             plot_cell_species_heatmap(matrix_df, output_dir / "cell_species_heatmap.png", cfg=cfg)
         )
+        # Summary panels
         paths.extend(
             plot_cell_microbe_summary(matrix_df, output_dir / "cell_microbe_summary.png", cfg=cfg)
         )
+        # Dot plot
         paths.extend(
             plot_cell_bacteria_dotplot(matrix_df, output_dir / "cell_bacteria_dotplot.png", cfg=cfg)
         )

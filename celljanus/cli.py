@@ -396,7 +396,7 @@ def visualize_cmd(bracken_file, output_dir, top_n, fmt):
 @click.option(
     "--whitelist", "-w", default=None, type=click.Path(exists=True), help="Cell barcode whitelist."
 )
-@click.option("--min-reads", default=10, help="Minimum reads per cell to include (default: 10).")
+@click.option("--min-reads", default=1, help="Minimum reads per cell to include (default: 1).")
 @click.option("--threads", "-t", default=None, type=int, help="Number of threads.")
 def scrnaseq_cmd(read1, read2, kraken2_db, output_dir, barcode_mode, whitelist, min_reads, threads):
     """Run scRNA-seq microbial classification with per-cell abundance tracking."""
@@ -449,11 +449,20 @@ def scrnaseq_cmd(read1, read2, kraken2_db, output_dir, barcode_mode, whitelist, 
     # Generate visualizations
     import pandas as pd
 
-    matrix_df = pd.read_csv(result["matrix_path"], index_col=0)
+    matrix_df = result["matrix_df"]
     if len(matrix_df) > 0:
         vis_dir = Path(output_dir) / "visualisation"
-        plots = generate_scrnaseq_plots(matrix_df, vis_dir, cfg=cfg)
+        plots = generate_scrnaseq_plots(
+            matrix_df,
+            vis_dir,
+            pipeline_summary=result["summary"],
+            cfg=cfg,
+        )
         console.print(f"[green]Generated {len(plots)} scRNA-seq plots[/green]")
+    else:
+        console.print(
+            "[yellow]Warning: No cells passed filtering. Try lowering --min-reads.[/yellow]"
+        )
 
     # Summary table
     summary = result["summary"]
