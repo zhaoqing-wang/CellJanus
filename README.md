@@ -220,13 +220,9 @@ celljanus scrnaseq \
 |:--:|
 | ![scRNA-seq Dashboard](docs/scrnaseq_dashboard.png) |
 
-| Abundance Pie | Cell–Species Heatmap |
+| Species Abundance Pie | Microbial Summary |
 |:--:|:--:|
-| ![Abundance Pie](docs/scrnaseq_abundance_pie.png) | ![Heatmap](docs/cell_species_heatmap.png) |
-
-| Microbial Summary | Cell–Bacteria Dotplot |
-|:--:|:--:|
-| ![Summary](docs/cell_microbe_summary.png) | ![Dotplot](docs/cell_bacteria_dotplot.png) |
+| ![Abundance Pie](docs/scrnaseq_abundance_pie.png) | ![Summary](docs/cell_microbe_summary.png) |
 
 ### scRNA-seq Output Files
 

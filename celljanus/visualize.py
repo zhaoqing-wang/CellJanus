@@ -996,17 +996,10 @@ def generate_scrnaseq_plots(
                 cfg=cfg,
             )
         )
-        # Heatmap
-        paths.extend(
-            plot_cell_species_heatmap(matrix_df, output_dir / "cell_species_heatmap.png", cfg=cfg)
-        )
-        # Summary panels
+        # Summary panels (3-panel: read depth, richness, top species)
         paths.extend(
             plot_cell_microbe_summary(matrix_df, output_dir / "cell_microbe_summary.png", cfg=cfg)
         )
-        # Dot plot
-        paths.extend(
-            plot_cell_bacteria_dotplot(matrix_df, output_dir / "cell_bacteria_dotplot.png", cfg=cfg)
-        )
+        # Note: Heatmap and dotplot removed - not suitable for real scRNA-seq (5000+ cells)
 
     return paths

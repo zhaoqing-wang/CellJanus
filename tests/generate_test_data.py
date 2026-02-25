@@ -61,18 +61,48 @@ ECOLI_16S = (
     "GTAACAGGAAGCAGCTTGCTGCTTCGCTGACGAGTGGCGGACGGGTGAGTAATGTCTGGGAAACTGC"
 )
 
+# Klebsiella pneumoniae 16S rRNA fragment
+KPNEU_16S = (
+    "AGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCAGGCTTAACACATGCAAGTCGAGCGGTAGCAC"
+    "AGGGAGCTTGCTCCCTGGGTGACGAGCGGCGGACGGGTGAGTAATGTCTGGGAAACTGCCTGATGGAG"
+)
+
+# Prevotella 16S rRNA fragment (Prevotellaceae representative)
+PREVO_16S = (
+    "AGAGTTTGATCCTGGCTCAGGATGAACGCTAGCTACAGGCTTAACACATGCAAGTCGAGGGGCAGCAT"
+    "GAGTTTAGCTTGCTAAGGCTGATGGCGACCGGCGCACGGGTGAGTAACGCGTATGCAACCTACCTTCG"
+)
+
+# Acetitomaculum 16S rRNA fragment
+ACETI_16S = (
+    "CAGAGTTTGATCCTGGCTCAGGATGAACGCTGGCGGCGTGCTTAACACATGCAAGTCGAACGAAGCAC"
+    "TTTAAGGATGCTTGCTTGCCTCGGTGACGAGTGGCGGACGGGTGAGTAACACGTGAGCAATCTGTCCC"
+)
+
+# Longispora 16S rRNA fragment
+LONGI_16S = (
+    "TGGAGTTTGATCCTGGCTCAGGGCGAACGCTGGCGGCGTGCTTAACACATGCAAGTCGAGCGATGAAG"
+    "CCTTTCGGGGTGGATTAGCGGCGAACGGGTGAGTAACACGTGGGCAATCTGCCCTGCACTCTGGGACA"
+)
+
+# Mobiluncus 16S rRNA fragment
+MOBIL_16S = (
+    "TGGAGTTTGATCCTGGCTCAGAACGAACGCTGGCGGCGTGCTTAACACATGCAAGTCGAACGGAAAGG"
+    "CCCCTTCGGGGGTACTCTTGATGCCGACGAGTGGCGGACGGGTGAGTAACACGTAAGTAACCTGCCCC"
+)
+
 
 def generate_test_fastq(
     output_dir: Path,
     *,
-    n_host_reads: int = 500,
-    n_microbe_reads: int = 200,
+    n_host_reads: int = 600,
+    n_microbe_reads: int = 350,
     n_low_quality: int = 50,
     read_length: int = 150,
     paired: bool = True,
 ) -> dict[str, Path]:
     """
-    Generate synthetic FASTQ test files.
+    Generate synthetic FASTQ test files with 7 microbial species.
 
     Returns
     -------
@@ -110,11 +140,24 @@ def generate_test_fastq(
             qual2 = _random_quality(read_length, min_q=25, max_q=38)
             records_r2.append(f"@HOST_READ_{read_id}/2\n{seq2}\n+\n{qual2}\n")
 
-    # --- Microbial reads ---
-    microbe_templates = [STAPH_AUREUS_16S, ECOLI_16S]
+    # --- Microbial reads (7 species with varied abundances) ---
+    microbe_templates = [
+        (STAPH_AUREUS_16S, "STAPH", 30),  # 30% abundance
+        (ECOLI_16S, "ECOLI", 25),  # 25% abundance
+        (KPNEU_16S, "KPNEU", 15),  # 15% abundance
+        (PREVO_16S, "PREVO", 12),  # 12% abundance
+        (ACETI_16S, "ACETI", 8),  # 8% abundance
+        (LONGI_16S, "LONGI", 6),  # 6% abundance
+        (MOBIL_16S, "MOBIL", 4),  # 4% abundance
+    ]
+    # Create weighted list for random selection
+    weighted_templates = []
+    for template, name, weight in microbe_templates:
+        weighted_templates.extend([(template, name)] * weight)
+
     for i in range(n_microbe_reads):
         read_id += 1
-        template = random.choice(microbe_templates)
+        template, species = random.choice(weighted_templates)
         seq = template[:read_length]
         seq_list = list(seq)
         for j in range(len(seq_list)):
@@ -125,7 +168,6 @@ def generate_test_fastq(
             seq += _random_seq(read_length - len(seq))
 
         qual = _random_quality(len(seq), min_q=20, max_q=35)
-        species = "STAPH" if template == STAPH_AUREUS_16S else "ECOLI"
         records_r1.append(f"@MICROBE_{species}_{read_id}/1\n{seq}\n+\n{qual}\n")
         if paired:
             seq2 = _random_seq(read_length)
@@ -167,7 +209,7 @@ def generate_test_fastq(
 # scRNA-seq test data generation (10x Genomics style)
 # ---------------------------------------------------------------------------
 
-# Valid 10x barcodes (subset for testing)
+# Valid 10x barcodes (30 barcodes for testing)
 VALID_BARCODES = [
     "AAACCTGAGCGATGAC",
     "AAACCTGCATCATCCC",
@@ -179,6 +221,26 @@ VALID_BARCODES = [
     "AAACGGGTCAGCGATT",
     "AAACGGGTCCACGTTC",
     "AAACGGGTCCCAAGTA",
+    "AAAGCAAAGCGCCTAT",
+    "AAAGCAAAGGATGGAA",
+    "AAAGCAACAGCGAACA",
+    "AAAGCAACATCAGTCA",
+    "AAAGCAACATGGTCAT",
+    "AAAGCAAGTACGCTGC",
+    "AAAGCAAGTAGTGAAT",
+    "AAAGCAAGTTCATGGT",
+    "AAAGCAATCAATAAGG",
+    "AAAGCAATCACCTCGT",
+    "AAAGTAGAGATCGATA",
+    "AAAGTAGAGCGTTGAA",
+    "AAAGTAGCATGACATC",
+    "AAAGTAGGTACCAGTA",
+    "AAAGTAGTCAACACAC",
+    "AAAGTCCTCAGAGACG",
+    "AAAGTCCTCAGCATGT",
+    "AAAGTCCTCAGTGCAT",
+    "AAAGTCCTCGACAGCC",
+    "AAAGTCCTCGGTTAAC",
 ]
 
 
@@ -190,9 +252,9 @@ def _random_umi(length: int = 12) -> str:
 def generate_scrnaseq_fastq(
     output_dir: Path,
     *,
-    n_cells: int = 10,
+    n_cells: int = 30,
     reads_per_cell: int = 50,
-    n_microbe_reads_per_cell: int = 5,
+    n_microbe_reads_per_cell: int = 8,
     read_length: int = 91,
 ) -> dict:
     """
@@ -215,12 +277,39 @@ def generate_scrnaseq_fastq(
 
     read_id = 0
 
-    microbe_templates = [STAPH_AUREUS_16S, ECOLI_16S]
-    species_names = ["Staphylococcus_aureus", "Escherichia_coli"]
+    # 7 species with different abundances per cell group
+    # Create varied abundance patterns for different cell groups
+    microbe_templates = [
+        (STAPH_AUREUS_16S, "Staphylococcus_aureus"),
+        (ECOLI_16S, "Escherichia_coli"),
+        (KPNEU_16S, "Klebsiella_pneumoniae"),
+        (PREVO_16S, "Prevotella"),
+        (ACETI_16S, "Acetitomaculum"),
+        (LONGI_16S, "Longispora"),
+        (MOBIL_16S, "Mobiluncus"),
+    ]
+
+    # Define abundance profiles for different cell groups
+    # Each profile is (weights for each species)
+    abundance_profiles = [
+        [30, 25, 15, 12, 8, 6, 4],  # Profile A: Staph/Ecoli dominant
+        [10, 35, 20, 15, 10, 5, 5],  # Profile B: Ecoli dominant
+        [15, 15, 30, 20, 10, 5, 5],  # Profile C: Klebsiella/Prevotella dominant
+        [20, 10, 10, 25, 20, 10, 5],  # Profile D: Prevotella/Aceti dominant
+        [5, 10, 15, 15, 20, 25, 10],  # Profile E: Longi dominant
+    ]
 
     for cell_idx in range(min(n_cells, len(VALID_BARCODES))):
         cell_barcode = VALID_BARCODES[cell_idx]
         cell_barcodes_used.append(cell_barcode)
+
+        # Select abundance profile based on cell index
+        profile = abundance_profiles[cell_idx % len(abundance_profiles)]
+
+        # Create weighted template list for this cell
+        weighted_templates = []
+        for i, (template, name) in enumerate(microbe_templates):
+            weighted_templates.extend([(template, name)] * profile[i])
 
         # Host reads for this cell
         n_host = reads_per_cell - n_microbe_reads_per_cell
@@ -244,14 +333,13 @@ def generate_scrnaseq_fastq(
             records_r1.append(f"{header}\n{r1_seq}\n+\n{r1_qual}\n")
             records_r2.append(f"{header}\n{r2_seq}\n+\n{r2_qual}\n")
 
-        # Microbial reads for this cell
+        # Microbial reads for this cell (using weighted templates)
         for _ in range(n_microbe_reads_per_cell):
             read_id += 1
             umi = _random_umi(12)
 
-            # Pick random microbe
-            tmpl_idx = random.randint(0, len(microbe_templates) - 1)
-            template = microbe_templates[tmpl_idx]
+            # Pick microbe based on weighted abundance profile
+            template, species_name = random.choice(weighted_templates)
 
             # R1: barcode + UMI
             r1_seq = cell_barcode + umi + _random_seq(read_length - 28)
