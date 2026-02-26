@@ -160,16 +160,55 @@ celljanus run \
 
 ```bash
 # 1. Download references (~13 GB total)
-celljanus download hg38 -o ./refs           # Human genome (~5 GB)
-celljanus download kraken2 -o ./refs        # Kraken2 DB (~8 GB)
+celljanus download hg38 -o ./refs           # Human genome + Bowtie2 index (~5 GB)
+celljanus download kraken2 -o ./refs        # Kraken2 standard DB (~8 GB)
 
-# 2. Run pipeline
+# 2. Run full pipeline (paired-end)
+celljanus run \
+    -1 sample_R1.fastq.gz \                  # Forward reads (required)
+    -2 sample_R2.fastq.gz \                  # Reverse reads (optional for PE)
+    -x ./refs/bowtie2_index/GRCh38_noalt_as \ # Bowtie2 index prefix
+    -d ./refs/standard_8 \                   # Kraken2 database path
+    -o ./results \                           # Output directory
+    --threads 8                              # Number of threads (default: auto)
+```
+
+<details>
+<summary><b>Advanced bulk options</b></summary>
+
+```bash
+# Run with custom QC and classification parameters
 celljanus run \
     -1 sample_R1.fastq.gz -2 sample_R2.fastq.gz \
     -x ./refs/bowtie2_index/GRCh38_noalt_as \
     -d ./refs/standard_8 \
-    -o ./results --threads 8
+    -o ./results \
+    --threads 8 \
+    --min-quality 20 \                       # Phred quality threshold (default: 15)
+    --min-length 50 \                        # Min read length after trimming (default: 36)
+    --confidence 0.1 \                       # Kraken2 confidence threshold (default: 0.05)
+    --bracken-level G \                      # Taxonomic level: S=species, G=genus (default: S)
+    --plot-format pdf \                      # Plot format: png, pdf, svg (default: png)
+    --max-memory 16                          # Max memory in GB (default: 80% of RAM)
+
+# Skip specific steps for partial re-runs
+celljanus run \
+    -1 sample_R1.fastq.gz -2 sample_R2.fastq.gz \
+    -x ./refs/bowtie2_index/GRCh38_noalt_as \
+    -d ./refs/standard_8 \
+    -o ./results \
+    --skip-qc \                              # Skip QC if already trimmed
+    --skip-visualize                         # Skip plot generation
+
+# Single-end mode (omit --read2)
+celljanus run \
+    -1 sample_SE.fastq.gz \
+    -x ./refs/bowtie2_index/GRCh38_noalt_as \
+    -d ./refs/standard_8 \
+    -o ./results_se
 ```
+
+</details>
 
 ---
 
@@ -223,12 +262,109 @@ celljanus scrnaseq \
 
 ### Real Data
 
+#### Step 1: Download Kraken2 Database
+
+scRNA-seq mode classifies microbial reads directly (no host alignment needed), so only a Kraken2 database is required:
+
 ```bash
+# Download pre-built Kraken2 database (~8 GB)
+celljanus download kraken2 -o ./refs         # Default: standard_8 database
+
+# Or choose a different database variant
+celljanus download kraken2 -o ./refs -n pluspfp_8  # Includes protozoa, fungi, plant
+```
+
+#### Step 2: Run scRNA-seq Pipeline
+
+**10x Genomics data (most common):**
+
+```bash
+# Basic 10x Genomics paired-end run
 celljanus scrnaseq \
-    --read1 sample_R1.fastq.gz --read2 sample_R2.fastq.gz \
+    --read1 sample_R1.fastq.gz \             # R1: contains cell barcodes + UMI
+    --read2 sample_R2.fastq.gz \             # R2: contains cDNA sequences
+    --kraken2-db ./refs/standard_8 \         # Kraken2 database path
+    --output-dir scrna_results \             # Output directory
+    --barcode-mode 10x \                     # Barcode format: 10x, parse, or auto
+    --threads 8                              # Number of threads (default: auto)
+
+# With barcode whitelist filtering (recommended for real data)
+# Whitelist files are typically provided by 10x Genomics, e.g.:
+#   - 3M-february-2018.txt.gz (v3 chemistry)
+#   - 737K-august-2016.txt   (v2 chemistry)
+celljanus scrnaseq \
+    --read1 sample_R1.fastq.gz \
+    --read2 sample_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
-    --output-dir scrna_results \
-    --barcode-mode 10x --threads 8
+    --output-dir scrna_results_filtered \
+    --barcode-mode 10x \
+    --whitelist 3M-february-2018.txt.gz \    # Cell barcode whitelist (optional)
+    --min-reads 5 \                          # Min reads per cell to include (default: 1)
+    --threads 8
+```
+
+**Parse Biosciences data:**
+
+```bash
+# Parse Biosciences scRNA-seq (barcode in read name, colon-separated)
+celljanus scrnaseq \
+    --read1 parse_R1.fastq.gz \
+    --read2 parse_R2.fastq.gz \
+    --kraken2-db ./refs/standard_8 \
+    --output-dir scrna_parse_results \
+    --barcode-mode parse \                   # Parse Biosciences barcode format
+    --min-reads 3 \
+    --threads 8
+```
+
+**Auto-detect barcode format:**
+
+```bash
+# Let CellJanus auto-detect the barcode format
+celljanus scrnaseq \
+    --read1 sample_R1.fastq.gz \
+    --read2 sample_R2.fastq.gz \
+    --kraken2-db ./refs/standard_8 \
+    --output-dir scrna_auto_results \
+    --barcode-mode auto                      # Auto-detect: tries 10x → Parse → other
+```
+
+#### Step 3: Downstream Integration (Seurat / Scanpy)
+
+The output CSV files integrate directly with standard scRNA-seq frameworks:
+
+```r
+# R / Seurat: Load normalized microbial abundance as an assay
+library(Seurat)
+
+# Load your existing Seurat object
+sc <- readRDS("seurat_object.rds")
+
+# Read CellJanus normalized matrix (cells × species, CPM-normalized)
+microbe_mat <- read.csv("scrna_results/tables/cell_species_normalized.csv",
+                        row.names = 1, check.names = FALSE)
+microbe_mat <- t(as.matrix(microbe_mat))            # Seurat expects features × cells
+
+# Add as a new assay
+sc[["Microbe"]] <- CreateAssayObject(counts = microbe_mat)
+```
+
+```python
+# Python / Scanpy: Load microbial abundance as an AnnData layer
+import scanpy as sc
+import pandas as pd
+
+# Load your existing AnnData object
+adata = sc.read_h5ad("adata.h5ad")
+
+# Read CellJanus normalized matrix
+microbe_df = pd.read_csv("scrna_results/tables/cell_species_normalized.csv",
+                         index_col=0)
+
+# Align cells and add as obsm
+common_cells = adata.obs_names.intersection(microbe_df.index)
+adata_sub = adata[common_cells, :]
+adata_sub.obsm["X_microbe"] = microbe_df.loc[common_cells].values
 ```
 
 ### Supported Platforms
@@ -259,6 +395,7 @@ celljanus scrnaseq \
 | `celljanus scrnaseq` | scRNA-seq mode with per-cell tracking |
 | `celljanus qc` | Quality control (fastp) |
 | `celljanus align` | Host alignment (Bowtie2) |
+| `celljanus extract` | Extract unmapped (non-host) reads from BAM |
 | `celljanus classify` | Taxonomic classification (Kraken2 + Bracken) |
 | `celljanus visualize` | Generate abundance plots |
 | `celljanus download` | Download reference databases |
@@ -274,6 +411,14 @@ celljanus scrnaseq \
 | `-d, --kraken2-db` | *required* | Kraken2 database path |
 | `-o, --output-dir` | `celljanus_output` | Output directory |
 | `-t, --threads` | auto | Worker threads |
+| `--min-quality` | 15 | Phred quality (bulk QC) |
+| `--confidence` | 0.05 | Kraken2 confidence threshold |
+| `--bracken-level` | S | Taxonomic level (D/P/C/O/F/G/S) |
+| `--barcode-mode` | 10x | scRNA-seq barcode format (10x/parse/auto) |
+| `-w, --whitelist` | — | Cell barcode whitelist (scRNA-seq) |
+| `--min-reads` | 1 | Min reads per cell (scRNA-seq) |
+| `--skip-qc` | — | Skip QC step (bulk) |
+| `--plot-format` | png | Plot format: png, pdf, svg |
 
 Run `celljanus <command> --help` for full details.
 
@@ -303,22 +448,49 @@ result.qc_report.summary()  # QC statistics
 ### scRNA-seq Pipeline
 
 ```python
+from pathlib import Path
+from celljanus.config import CellJanusConfig
 from celljanus.scrnaseq import BarcodeConfig, run_scrnaseq_classification
 
-result = run_scrnaseq_classification(
-    Path("sample_R1.fastq.gz"),
-    Path("./refs/standard_8"),
-    Path("./scrna_results"),
-    read2=Path("sample_R2.fastq.gz"),
-    barcode_cfg=BarcodeConfig(mode="10x"),
+# Configure pipeline
+cfg = CellJanusConfig(
+    output_dir=Path("./scrna_results"),
+    kraken2_db=Path("./refs/standard_8"),
+    threads=8,
 )
 
-# Access data
+# Configure barcode extraction
+barcode_cfg = BarcodeConfig(
+    mode="10x",                              # Barcode format: 10x, parse, auto
+    min_reads_per_cell=5,                     # Filter low-quality cells
+    # whitelist_path=Path("barcodes.txt"),    # Optional: barcode whitelist
+)
+
+# Run scRNA-seq classification
+result = run_scrnaseq_classification(
+    Path("sample_R1.fastq.gz"),              # R1 FASTQ (barcodes)
+    Path("./refs/standard_8"),               # Kraken2 database
+    Path("./scrna_results"),                 # Output directory
+    read2=Path("sample_R2.fastq.gz"),        # R2 FASTQ (cDNA)
+    barcode_cfg=barcode_cfg,
+    cfg=cfg,
+)
+
+# Access per-cell abundance data
 abundance = result["abundance"]
-abundance.to_matrix()             # Raw counts
-abundance.to_normalized_matrix()  # CPM-normalized
-abundance.to_species_summary()    # Species statistics
-abundance.to_cell_summary()       # Cell diversity metrics
+abundance.to_matrix()             # Raw counts (cells × species DataFrame)
+abundance.to_normalized_matrix()  # CPM-normalized (ready for Seurat/Scanpy)
+abundance.to_long_format()        # Tidy format (for ggplot2/seaborn)
+abundance.to_species_summary()    # Per-species statistics
+abundance.to_cell_summary()       # Per-cell diversity metrics
+abundance.summary()               # Pipeline summary dict
+
+# Access output file paths
+print(result["matrix_path"])          # cell_species_counts.csv
+print(result["normalized_path"])      # cell_species_normalized.csv
+print(result["long_path"])            # cell_species_long.csv
+print(result["species_summary_path"]) # species_summary.csv
+print(result["cell_summary_path"])    # cell_summary.csv
 ```
 
 ---
