@@ -16,9 +16,15 @@
   </tr>
 </table>
 
-**Bulk RNA-seq:** `FASTQ → fastp (QC) → Bowtie2 (host) → unmapped reads → Kraken2+Bracken → plots + CSV`
+## Pipeline
 
-**scRNA-seq:** `10x FASTQ → Extract CB+UMI → Kraken2 → Per-cell abundance → Cell×Species matrix`
+**Bulk RNA-seq:** 
+
+`FASTQ → fastp (QC) → Bowtie2 (host) → unmapped reads → Kraken2+Bracken → plots + CSV`
+
+**scRNA-seq:** 
+
+`10x FASTQ → Extract CB+UMI → Kraken2 → Per-cell abundance → Cell×Species matrix`
 
 ---
 
