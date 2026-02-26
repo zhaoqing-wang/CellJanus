@@ -168,6 +168,21 @@ celljanus run -1 sample_SE.fastq.gz -x ./refs/... -d ./refs/... -o ./results
 
 </details>
 
+<details>
+<summary><b>WSL2 optimization</b></summary>
+
+For best performance on WSL2, store data on the Linux filesystem (10–50× faster I/O):
+
+```bash
+mkdir -p ~/celljanus_work
+cp /mnt/c/Data/sample*.fastq.gz ~/celljanus_work/
+celljanus run -1 ~/celljanus_work/sample_R1.fastq.gz ...
+```
+
+CellJanus auto-detects WSL2 and warns about slow cross-filesystem paths.
+
+</details>
+
 ---
 
 ## 3. scRNA-seq Mode
@@ -434,21 +449,6 @@ scrna_results/
 ├── visualisation/plots/          # 3 PNG + 3 PDF (dashboard, pie, 3-panel summary)
 └── celljanus.log
 ```
-
-</details>
-
-<details>
-<summary><b>WSL2 optimization</b></summary>
-
-For best performance on WSL2, store data on the Linux filesystem (10–50× faster I/O):
-
-```bash
-mkdir -p ~/celljanus_work
-cp /mnt/c/Data/sample*.fastq.gz ~/celljanus_work/
-celljanus run -1 ~/celljanus_work/sample_R1.fastq.gz ...
-```
-
-CellJanus auto-detects WSL2 and warns about slow cross-filesystem paths.
 
 </details>
 
