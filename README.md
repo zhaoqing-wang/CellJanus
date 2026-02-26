@@ -1,39 +1,49 @@
-<table>
-  <tr>
-    <td>
-      <h1>CellJanus</h1>
-      <p><b>Dual-Perspective Deconvolution of Host and Microbial Transcriptomes from FASTQ Data</b></p>
-      <p>
-        <a href="https://pypi.org/project/celljanus/"><img src="https://img.shields.io/pypi/v/celljanus?color=blue&style=flat-square" alt="PyPI Version" /></a>
-        <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT" /></a>
-        <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.9%2B-blue.svg" alt="Python 3.9+" /></a>
-        <a href="https://github.com/zhaoqing-wang"><img src="https://img.shields.io/badge/Maintainer-Zhaoqing_Wang-green" alt="GitHub Maintainer" /></a>
-      </p>
-    </td>
-    <td width="200">
-      <img src="docs/Sticker.png" alt="CellJanus Logo" width="200" />
-    </td>
-  </tr>
-</table>
+# CellJanus: Dual-Perspective Deconvolution of Host and Microbial Transcriptomes from FASTQ Data
 
-## Pipeline
+[![PyPI Version](https://img.shields.io/pypi/v/celljanus?color=blue&style=flat-square)](https://pypi.org/project/celljanus/) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/) [![GitHub Maintainer](https://img.shields.io/badge/Maintainer-Zhaoqing_Wang-green)](https://github.com/zhaoqing-wang)
 
-**Bulk RNA-seq:** 
+## Overview
 
-`FASTQ → fastp (QC) → Bowtie2 (host) → unmapped reads → Kraken2+Bracken → plots + CSV`
+<img src="docs/Sticker.png" alt="CellJanus Logo" width="200" align="right"/>
 
-**scRNA-seq:** 
+CellJanus is a Python-based computational framework for the joint deconvolution of host and microbial transcriptomes directly from raw FASTQ data. CellJanus addresses two complementary analytical scales: **bulk RNA-seq** for sample-level microbial profiling and **scRNA-seq** for cell-resolved microbiome characterization. Notably, the single-cell mode assigns microbial taxonomic labels to individual cell barcodes, enabling the construction of per-cell abundance matrices (cells × species) that can be seamlessly incorporated into standard downstream frameworks such as Seurat and Scanpy. This dual-perspective design bridges the gap between bulk metatranscriptomics and single-cell host–microbe interaction analysis within a single, reproducible toolkit.
 
-`10x FASTQ → Extract CB+UMI → Kraken2 → Per-cell abundance → Cell×Species matrix`
+## Table of Contents
+
+1. [Preparation](#1-preparation)
+    - [1.1 Installation](#11-installation)
+    - [1.2 Verify Installation](#12-verify-installation)
+    - [1.3 Download Reference Databases](#13-download-reference-databases)
+2. [Bulk RNA-seq Mode](#2-bulk-rna-seq-mode)
+    - [2.1 Quick Test](#21-quick-test)
+    - [2.2 Real Data](#22-real-data)
+    - [2.3 Advanced Options](#23-advanced-options)
+3. [scRNA-seq Mode](#3-scrna-seq-mode)
+    - [3.1 Quick Test](#31-quick-test)
+    - [3.2 Real Data (10x Genomics)](#32-real-data-10x-genomics)
+    - [3.3 Other Platforms](#33-other-platforms)
+    - [3.4 Downstream Integration (Seurat / Scanpy)](#34-downstream-integration-seurat--scanpy)
+    - [3.5 Output Files](#35-output-files)
+4. [CLI Reference](#4-cli-reference)
+5. [Python API](#5-python-api)
+    - [5.1 Bulk Pipeline](#51-bulk-pipeline)
+    - [5.2 scRNA-seq Pipeline](#52-scrna-seq-pipeline)
+6. [Output Structure](#6-output-structure)
+7. [Citation](#7-citation)
+8. [License](#8-license)
+9. [Contact](#9-contact)
 
 ---
 
-## Installation
+## 1. Preparation
+
+### 1.1 Installation
+
+Creates a complete environment with CellJanus **and all external tools** (fastp, Bowtie2, samtools, Kraken2, Bracken):
 
 ```bash
 conda env create -f https://raw.githubusercontent.com/zhaoqing-wang/CellJanus/main/environment.yml
 conda activate celljanus
-celljanus check   # All tools should show ✔ Found
 ```
 
 > **Requirements**: [Conda](https://docs.conda.io/en/latest/miniconda.html) or [Mamba](https://mamba.readthedocs.io/). Works on **Linux / macOS / WSL2**.
@@ -55,13 +65,36 @@ docker build -t celljanus . && docker run --rm celljanus celljanus check
 
 </details>
 
+### 1.2 Verify Installation
+
+```bash
+celljanus check   # All tools should show ✔ Found
+```
+
+### 1.3 Download Reference Databases
+
+**Bulk RNA-seq** requires both a host genome index and a Kraken2 database. **scRNA-seq** only requires a Kraken2 database.
+
+```bash
+celljanus download hg38 -o ./refs           # Human genome + Bowtie2 index (~5 GB)
+celljanus download kraken2 -o ./refs        # Kraken2 standard DB (~8 GB)
+```
+
+*Note: The test data included in the package (`testdata/`) can be used without downloading any references.*
+
 ---
 
-## Bulk RNA-seq Mode
+## 2. Bulk RNA-seq Mode
 
 Full pipeline: QC → Host alignment → Microbial classification → Visualization.
 
-### Quick Test (no downloads required)
+```
+FASTQ → fastp (QC) → Bowtie2 (host) → unmapped reads → Kraken2+Bracken → plots + CSV
+```
+
+### 2.1 Quick Test
+
+Run immediately with built-in test data — **no downloads required**:
 
 ```bash
 celljanus run \
@@ -99,14 +132,9 @@ celljanus run \
 
 </details>
 
-### Real Data
+### 2.2 Real Data
 
 ```bash
-# 1. Download references (~13 GB total)
-celljanus download hg38 -o ./refs           # Human genome + Bowtie2 index (~5 GB)
-celljanus download kraken2 -o ./refs        # Kraken2 standard DB (~8 GB)
-
-# 2. Run pipeline
 celljanus run \
     -1 sample_R1.fastq.gz -2 sample_R2.fastq.gz \
     -x ./refs/bowtie2_index/GRCh38_noalt_as \
@@ -114,8 +142,12 @@ celljanus run \
     -o ./results --threads 8
 ```
 
+**Important: Download reference databases first (see [Section 1.3](#13-download-reference-databases)).**
+
+### 2.3 Advanced Options
+
 <details>
-<summary><b>Advanced options (custom QC, skip steps, single-end)</b></summary>
+<summary><b>Custom parameters, skip steps, single-end mode</b></summary>
 
 ```bash
 # Custom QC and classification parameters
@@ -130,7 +162,7 @@ celljanus run \
 # Skip steps for partial re-runs
 celljanus run ... --skip-qc --skip-visualize
 
-# Single-end mode
+# Single-end mode (omit --read2)
 celljanus run -1 sample_SE.fastq.gz -x ./refs/... -d ./refs/... -o ./results
 ```
 
@@ -138,11 +170,17 @@ celljanus run -1 sample_SE.fastq.gz -x ./refs/... -d ./refs/... -o ./results
 
 ---
 
-## scRNA-seq Mode
+## 3. scRNA-seq Mode
 
-Per-cell microbial abundance tracking. Only a Kraken2 database is needed (no host alignment).
+Per-cell microbial abundance tracking with barcode extraction. Only a Kraken2 database is needed (no host alignment).
 
-### Quick Test (no downloads required)
+```
+10x FASTQ → Extract CB+UMI → Kraken2 → Per-cell abundance → Cell×Species matrix
+```
+
+### 3.1 Quick Test
+
+Run immediately with built-in test data — **no downloads required**:
 
 ```bash
 celljanus scrnaseq \
@@ -184,16 +222,13 @@ celljanus scrnaseq \
 
 </details>
 
-### Real Data
+### 3.2 Real Data (10x Genomics)
 
 ```bash
-# 1. Download Kraken2 database (~8 GB)
-celljanus download kraken2 -o ./refs
-
-# 2. Run scRNA-seq pipeline (10x Genomics)
+# Basic run
 celljanus scrnaseq \
-    --read1 sample_R1.fastq.gz \             # R1: cell barcodes + UMI
-    --read2 sample_R2.fastq.gz \             # R2: cDNA sequences
+    --read1 sample_R1.fastq.gz \
+    --read2 sample_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_results \
     --barcode-mode 10x --threads 8
@@ -204,9 +239,13 @@ celljanus scrnaseq \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_results \
     --barcode-mode 10x \
-    --whitelist 3M-february-2018.txt.gz \    # 10x v3 barcode whitelist
+    --whitelist 3M-february-2018.txt.gz \
     --min-reads 5 --threads 8
 ```
+
+**Important: Download the Kraken2 database first (see [Section 1.3](#13-download-reference-databases)). Whitelist files are typically provided by 10x Genomics (e.g., `3M-february-2018.txt.gz` for v3 chemistry).**
+
+### 3.3 Other Platforms
 
 <details>
 <summary><b>Parse Biosciences / auto-detect mode</b></summary>
@@ -235,7 +274,9 @@ celljanus scrnaseq \
 
 </details>
 
-### Downstream Integration (Seurat / Scanpy)
+### 3.4 Downstream Integration (Seurat / Scanpy)
+
+The output CSV files integrate directly with standard scRNA-seq frameworks:
 
 ```r
 # R / Seurat
@@ -255,7 +296,7 @@ common = adata.obs_names.intersection(microbe_df.index)
 adata[common].obsm["X_microbe"] = microbe_df.loc[common].values
 ```
 
-### Output Files
+### 3.5 Output Files
 
 | File | Description |
 |------|-------------|
@@ -264,10 +305,11 @@ adata[common].obsm["X_microbe"] = microbe_df.loc[common].values
 | `cell_species_long.csv` | Tidy format for ggplot2/seaborn |
 | `species_summary.csv` | Per-species statistics |
 | `cell_summary.csv` | Per-cell diversity metrics |
+| `pipeline_summary.csv` | Pipeline metrics |
 
 ---
 
-## CLI Reference
+## 4. CLI Reference
 
 | Command | Description |
 |---------|-------------|
@@ -277,8 +319,8 @@ adata[common].obsm["X_microbe"] = microbe_df.loc[common].values
 | `celljanus align` | Host alignment only (Bowtie2) |
 | `celljanus extract` | Extract unmapped reads from BAM |
 | `celljanus classify` | Taxonomic classification (Kraken2 + Bracken) |
-| `celljanus visualize` | Generate abundance plots |
-| `celljanus download` | Download reference databases (hg38, kraken2) |
+| `celljanus visualize` | Generate abundance plots from Bracken results |
+| `celljanus download` | Download reference databases (hg38, kraken2, refseq) |
 | `celljanus check` | Verify external tool installation |
 
 Run `celljanus <command> --help` for full option details.
@@ -301,16 +343,16 @@ Run `celljanus <command> --help` for full option details.
 | `-w, --whitelist` | — | Cell barcode whitelist (scRNA-seq) |
 | `--min-reads` | 1 | Min reads per cell (scRNA-seq) |
 | `--skip-qc` | — | Skip QC step (bulk) |
+| `--skip-visualize` | — | Skip visualization step (bulk) |
 | `--plot-format` | png | Output format: png / pdf / svg |
 
 </details>
 
 ---
 
-## Python API
+## 5. Python API
 
-<details>
-<summary><b>Bulk pipeline</b></summary>
+### 5.1 Bulk Pipeline
 
 ```python
 from pathlib import Path
@@ -328,10 +370,7 @@ result.bracken_df           # Species abundance DataFrame
 result.qc_report.summary()  # QC statistics
 ```
 
-</details>
-
-<details>
-<summary><b>scRNA-seq pipeline</b></summary>
+### 5.2 scRNA-seq Pipeline
 
 ```python
 from pathlib import Path
@@ -366,11 +405,9 @@ abundance.to_species_summary()    # Per-species statistics
 abundance.to_cell_summary()       # Per-cell diversity metrics
 ```
 
-</details>
-
 ---
 
-## Output Structure
+## 6. Output Structure
 
 <details>
 <summary><b>Bulk RNA-seq output</b></summary>
@@ -400,10 +437,6 @@ scrna_results/
 
 </details>
 
----
-
-## Advanced
-
 <details>
 <summary><b>WSL2 optimization</b></summary>
 
@@ -421,17 +454,17 @@ CellJanus auto-detects WSL2 and warns about slow cross-filesystem paths.
 
 ---
 
-## Citation
+## 7. Citation
 
 ```
-Wang Z (2026). CellJanus: Dual-Perspective Deconvolution of Host and Microbial
-Transcriptomes from FASTQ Data. https://github.com/zhaoqing-wang/CellJanus
+Wang Z (2026). CellJanus: Dual-Perspective Deconvolution of Host and Microbial Transcriptomes from FASTQ Data. 
+https://github.com/zhaoqing-wang/CellJanus
 ```
 
-## License
+## 8. License
 
 [MIT](LICENSE)
 
-## Contact
+## 9. Contact
 
 **Author:** Zhaoqing Wang ([ORCID](https://orcid.org/0000-0001-8348-7245)) | **Email:** <zhaoqingwang@mail.sdu.edu.cn> | **Issues:** [CellJanus Issues](https://github.com/zhaoqing-wang/CellJanus/issues)
