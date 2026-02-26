@@ -52,15 +52,15 @@ conda activate celljanus
 <summary><b>Alternative installation methods</b></summary>
 
 ```bash
-# pip only (requires fastp, bowtie2, samtools, kraken2, bracken on PATH)
-pip install celljanus
-
-# Development install
+# Option 1: Development install
 git clone https://github.com/zhaoqing-wang/CellJanus.git
 cd CellJanus && pip install -e ".[dev]"
 
-# Docker
+# Option 2: Docker
 docker build -t celljanus . && docker run --rm celljanus celljanus check
+
+# Option 3: pip only (requires fastp, bowtie2, samtools, kraken2, bracken on PATH)
+pip install celljanus
 ```
 
 </details>
@@ -70,6 +70,38 @@ docker build -t celljanus . && docker run --rm celljanus celljanus check
 ```bash
 celljanus check   # All tools should show ✔ Found
 ```
+
+<details>
+<summary><b>Expected output</b></summary>
+
+```
+   ____     _ _     _
+  / ___|___| | |   | | __ _ _ __  _   _ ___
+ | |   / _ \ | |_  | |/ _` | '_ \| | | / __|
+ | |__|  __/ | | |_| | (_| | | | | |_| \__ \
+  \____\___|_|_|\___/ \__,_|_| |_|\__,_|___/
+  Dual-Perspective Host–Microbe Deconvolution
+
+                     External Tool Availability
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Tool                     ┃ Status  ┃ Path                                   ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ fastp                    │  Found  │ /path/to/envs/celljanus/bin/fastp      │
+├──────────────────────────┼─────────┼────────────────────────────────────────┤
+│ bowtie2                  │  Found  │ /path/to/envs/celljanus/bin/bowtie2    │
+├──────────────────────────┼─────────┼────────────────────────────────────────┤
+│ bowtie2-build (optional) │  Found  │ /path/to/envs/celljanus/bin/bowtie2-b… │
+├──────────────────────────┼─────────┼────────────────────────────────────────┤
+│ samtools                 │  Found  │ /path/to/envs/celljanus/bin/samtools   │
+├──────────────────────────┼─────────┼────────────────────────────────────────┤
+│ kraken2                  │  Found  │ /path/to/envs/celljanus/bin/kraken2    │
+├──────────────────────────┼─────────┼────────────────────────────────────────┤
+│ bracken                  │  Found  │ /path/to/envs/celljanus/bin/bracken    │
+└──────────────────────────┴─────────┴────────────────────────────────────────┘
+All tools available!
+```
+
+</details>
 
 ### 1.3 Download Reference Databases
 
@@ -118,8 +150,10 @@ celljanus run \
 
 | Metric | Value |
 |--------|-------|
-| Input reads | 1,000 |
-| QC-passed | 950 (95%) |
+| Input reads | 1,000 paired-end |
+| QC-passed | 950 (95.0%) |
+| Host alignment rate | 31.58% |
+| Classified reads | 294 |
 | Species detected | 5 |
 
 | Species | Reads | Fraction |
@@ -129,6 +163,8 @@ celljanus run \
 | *Klebsiella pneumoniae* | 56 | 19.0% |
 | *Spatula rhynchotis* | 31 | 10.5% |
 | *Megeuptychia antonoe* | 19 | 6.5% |
+
+> *Note: The test database uses NCBI taxids that may resolve to different species names depending on the NCBI taxonomy version. This does not affect pipeline functionality.*
 
 </details>
 
@@ -234,6 +270,8 @@ celljanus scrnaseq \
 | *Spatula rhynchotis* | 311 | 195 | 65.0% |
 | *Megeuptychia antonoe* | 228 | 134 | 44.7% |
 | *Sphaerobacter* | 147 | 108 | 36.0% |
+
+> *Note: Species names depend on the NCBI taxonomy version bundled with the test Kraken2 database.*
 
 </details>
 
@@ -424,8 +462,7 @@ abundance.to_cell_summary()       # Per-cell diversity metrics
 
 ## 6. Output Structure
 
-<details>
-<summary><b>Bulk RNA-seq output</b></summary>
+**Bulk RNA-seq output**
 
 ```
 results/
@@ -437,10 +474,7 @@ results/
 └── celljanus.log
 ```
 
-</details>
-
-<details>
-<summary><b>scRNA-seq output</b></summary>
+**scRNA-seq output**
 
 ```
 scrna_results/

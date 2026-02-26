@@ -37,18 +37,11 @@ def find_tools() -> dict[str, Optional[str]]:
         "bowtie2-build",
         "samtools",
         "kraken2",
-        "kraken2-build",
         "bracken",
-        "bracken-build",
-        "star",
-        "STAR",
     ]
     found: dict[str, Optional[str]] = {}
     for n in names:
         found[n] = _find_tool(n)
-    # Normalise STAR (case-insensitive on Windows)
-    if found.get("star") is None and found.get("STAR"):
-        found["star"] = found["STAR"]
     return found
 
 

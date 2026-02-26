@@ -81,7 +81,7 @@ def check():
     tbl.add_column("Path")
 
     required = {"fastp", "bowtie2", "samtools", "kraken2", "bracken"}
-    optional = {"bowtie2-build", "kraken2-build", "bracken-build", "star", "STAR"}
+    optional = {"bowtie2-build"}
     all_required_ok = True
     for name, path in tools.items():
         is_opt = name in optional
@@ -97,12 +97,12 @@ def check():
 
     console.print(tbl)
     if all_required_ok:
-        console.print("[bold green]All required tools available![/bold green]")
+        console.print("[bold green]All tools available![/bold green]")
     else:
         console.print(
             "[yellow]Some required tools are missing. Install them and add to PATH.[/yellow]\n"
             "Required: fastp, bowtie2, samtools, kraken2, bracken\n"
-            "Optional: bowtie2-build, kraken2-build, bracken-build, STAR"
+            "Optional: bowtie2-build (for celljanus download hg38)"
         )
 
 
