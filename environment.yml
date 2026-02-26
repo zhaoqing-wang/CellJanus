@@ -27,10 +27,6 @@ dependencies:
   - samtools=1.21
   - kraken2=2.1.3
   - bracken=2.9
-  
-  # ── Optional: STAR for RNA-seq alignment ────────────────────
-  # Uncomment below if you need STAR (requires 32+ GB RAM for human genome)
-  # - star=2.7.11b
 
   # ── Install CellJanus from PyPI via pip ────────────────────
   - pip

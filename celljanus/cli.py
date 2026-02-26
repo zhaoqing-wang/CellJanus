@@ -80,21 +80,29 @@ def check():
     tbl.add_column("Status")
     tbl.add_column("Path")
 
-    all_ok = True
+    required = {"fastp", "bowtie2", "samtools", "kraken2", "bracken"}
+    optional = {"bowtie2-build", "kraken2-build", "bracken-build", "star", "STAR"}
+    all_required_ok = True
     for name, path in tools.items():
+        is_opt = name in optional
+        label = f"{name} (optional)" if is_opt else name
         if path:
-            tbl.add_row(name, "[green]✔ Found[/green]", path)
+            tbl.add_row(label, "[green]✔ Found[/green]", path)
         else:
-            tbl.add_row(name, "[red]✘ Missing[/red]", "—")
-            all_ok = False
+            if is_opt:
+                tbl.add_row(label, "[dim]— Not found[/dim]", "—")
+            else:
+                tbl.add_row(label, "[red]✘ Missing[/red]", "—")
+                all_required_ok = False
 
     console.print(tbl)
-    if all_ok:
-        console.print("[bold green]All tools available![/bold green]")
+    if all_required_ok:
+        console.print("[bold green]All required tools available![/bold green]")
     else:
         console.print(
-            "[yellow]Some tools are missing. Install them and add to PATH.[/yellow]\n"
-            "Required: fastp, bowtie2, bowtie2-build, samtools, kraken2, bracken"
+            "[yellow]Some required tools are missing. Install them and add to PATH.[/yellow]\n"
+            "Required: fastp, bowtie2, samtools, kraken2, bracken\n"
+            "Optional: bowtie2-build, kraken2-build, bracken-build, STAR"
         )
 
 

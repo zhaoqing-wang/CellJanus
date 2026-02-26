@@ -3,14 +3,14 @@
 #  Dual-Perspective Host–Microbe Deconvolution Pipeline
 #
 #  Build:
-#    docker build -t celljanus:0.1.1 .
+#    docker build -t celljanus:0.1.6 .
 #
 #  Run examples:
 #    # Check tool availability
-#    docker run --rm celljanus:0.1.1 celljanus check
+#    docker run --rm celljanus:0.1.6 celljanus check
 #
 #    # Run full pipeline (mount data directory)
-#    docker run --rm -v /path/to/data:/data celljanus:0.1.1 \
+#    docker run --rm -v /path/to/data:/data celljanus:0.1.6 \
 #        celljanus run \
 #            --read1 /data/sample_R1.fastq.gz \
 #            --read2 /data/sample_R2.fastq.gz \
@@ -25,7 +25,7 @@ FROM condaforge/miniforge3:24.11.3-2 AS base
 
 LABEL maintainer="Zhaoqing Wang" \
     description="CellJanus: Dual-Perspective Host–Microbe Deconvolution" \
-    version="0.1.1" \
+    version="0.1.6" \
     url="https://github.com/zhaoqing-wang/CellJanus"
 
 # Avoid interactive prompts
@@ -43,11 +43,11 @@ RUN apt-get update && \
 RUN conda create -y -n celljanus \
     -c bioconda -c conda-forge \
     python=3.11 \
-    fastp=1.1.0 \
+    fastp=0.23.4 \
     bowtie2=2.5.4 \
-    samtools=1.23 \
-    kraken2=2.17.1 \
-    bracken=3.1 \
+    samtools=1.21 \
+    kraken2=2.1.3 \
+    bracken=2.9 \
     && conda clean -afy
 
 # Activate the environment by default

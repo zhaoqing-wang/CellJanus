@@ -127,8 +127,8 @@ celljanus run \
 | *Staphylococcus aureus* | 109 | 37.1% |
 | *Escherichia coli* | 79 | 26.9% |
 | *Klebsiella pneumoniae* | 56 | 19.0% |
-| *Acetitomaculum* | 31 | 10.5% |
-| *Longispora* | 19 | 6.5% |
+| *Spatula rhynchotis* | 31 | 10.5% |
+| *Megeuptychia antonoe* | 19 | 6.5% |
 
 </details>
 
@@ -231,9 +231,9 @@ celljanus scrnaseq \
 | *Prevotella* | 426 | 234 | 78.0% |
 | *Staphylococcus aureus* | 418 | 218 | 72.7% |
 | *Klebsiella pneumoniae* | 405 | 225 | 75.0% |
-| *Acetitomaculum* | 311 | 195 | 65.0% |
-| *Longispora* | 228 | 134 | 44.7% |
-| *Mobiluncus* | 147 | 108 | 36.0% |
+| *Spatula rhynchotis* | 311 | 195 | 65.0% |
+| *Megeuptychia antonoe* | 228 | 134 | 44.7% |
+| *Sphaerobacter* | 147 | 108 | 36.0% |
 
 </details>
 
@@ -433,7 +433,7 @@ results/
 ├── 02_alignment/                 # Bowtie2: BAM, unmapped FASTQs, stats
 ├── 04_classification/            # Kraken2 report + Bracken species table
 ├── 05_visualisation/plots/       # 4 PNG + 4 PDF (bar, pie, heatmap, dashboard)
-├── 06_tables/                    # species_abundance.csv, pipeline_summary.csv
+├── 06_tables/                    # species_abundance.csv, pipeline_summary.csv, output_manifest.csv
 └── celljanus.log
 ```
 
