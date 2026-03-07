@@ -54,24 +54,3 @@ jobs:
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
 
-  # ── 3. (Optional) Publish to TestPyPI ──────────────────────
-  publish-testpypi:
-    name: Publish to TestPyPI
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'   # only on manual trigger
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/celljanus
-    steps:
-      - name: Download dist artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: python-package-distributions
-          path: dist/
-
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
