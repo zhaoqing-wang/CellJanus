@@ -30,7 +30,7 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Reference data (large)
+# Reference data
 refs/
 *.fastq.gz
 *.bam
@@ -39,5 +39,5 @@ refs/
 # Logs
 *.log
 
-# Test results (generated locally)
+# Test results
 test_results/
