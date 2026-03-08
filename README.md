@@ -39,28 +39,34 @@ CellJanus is a Python-based computational framework for the joint deconvolution 
 
 ### 1.1 Installation
 
-Creates a complete environment with CellJanus **and all external tools** (fastp, Bowtie2, samtools, Kraken2, Bracken):
+Clone the repository and create a complete environment with CellJanus **and all external tools** (fastp, Bowtie2, samtools, Kraken2, Bracken):
 
 ```bash
-conda env create -f https://raw.githubusercontent.com/zhaoqing-wang/CellJanus/main/environment.yml
+git clone https://github.com/zhaoqing-wang/CellJanus.git
+cd CellJanus
+conda env create -f environment.yml
 conda activate celljanus
 ```
 
 > **Requirements**: [Conda](https://docs.conda.io/en/latest/miniconda.html) or [Mamba](https://mamba.readthedocs.io/). Works on **Linux / macOS / WSL2**.
 
+This is the **recommended** method. The repository includes test data (`testdata/`) and test reference databases so that Quick Tests ([§2.1](#21-quick-test), [§3.1](#31-quick-test)) can be run immediately without downloading any external references.
+
 <details>
 <summary><b>Alternative installation methods</b></summary>
 
+The alternatives below install CellJanus **without** the test data and test reference databases. Quick Tests ([§2.1](#21-quick-test), [§3.1](#31-quick-test)) will not work unless you also clone the repository separately.
+
 ```bash
-# Option 1: Development install
-git clone https://github.com/zhaoqing-wang/CellJanus.git
-cd CellJanus && pip install -e ".[dev]"
+# Option 1: Conda from URL (no git clone needed, but no testdata)
+conda env create -f https://raw.githubusercontent.com/zhaoqing-wang/CellJanus/main/environment.yml
+conda activate celljanus
 
-# Option 2: Docker
-docker build -t celljanus . && docker run --rm celljanus celljanus check
-
-# Option 3: pip only (requires fastp, bowtie2, samtools, kraken2, bracken on PATH)
+# Option 2: pip only (requires fastp, bowtie2, samtools, kraken2, bracken already on PATH)
 pip install celljanus
+
+# Option 3: Docker
+docker build -t celljanus . && docker run --rm celljanus celljanus check
 ```
 
 </details>
@@ -112,7 +118,7 @@ celljanus download hg38 -o ./refs           # Human genome + Bowtie2 index (~5 G
 celljanus download kraken2 -o ./refs        # Kraken2 standard DB (~8 GB)
 ```
 
-*Note: The test data included in the package (`testdata/`) can be used without downloading any references.*
+*Note: The test data (`testdata/`) and test reference databases are included in the GitHub repository and can be used without downloading any additional references. If you installed via the recommended `git clone` method ([§1.1](#11-installation)), the Quick Tests are ready to run immediately. If you installed via pip or conda from URL, `testdata/` will not be available.*
 
 ---
 
@@ -136,6 +142,8 @@ celljanus run \
     --kraken2-db testdata/refs/kraken2_testdb \
     --output-dir test_results/bulk
 ```
+
+> **Note**: These commands use relative paths and must be run from the repository root (`CellJanus/`). If you installed via pip or conda from URL (see [§1.1 Alternative methods](#11-installation)), clone the repository first to obtain the `testdata/` directory.
 
 | Pipeline Dashboard |
 |:--:|
@@ -241,6 +249,8 @@ celljanus scrnaseq \
     --output-dir test_results/scrnaseq \
     --barcode-mode 10x --min-reads 1
 ```
+
+> **Note**: These commands use relative paths and must be run from the repository root (`CellJanus/`). If you installed via pip or conda from URL (see [§1.1 Alternative methods](#11-installation)), clone the repository first to obtain the `testdata/` directory.
 
 | scRNA-seq Dashboard |
 |:--:|
