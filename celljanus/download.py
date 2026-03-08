@@ -36,7 +36,7 @@ HG38_URLS = {
     # Primary assembly FASTA (soft-masked) — ~900 MB compressed
     "fasta": ("https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz"),
     # Pre-built Bowtie2 index — ~4 GB
-    "bowtie2_index": ("https://genome-idx.s3.amazonaws.com/bt2/GRCh38_noalt_as.zip"),
+    "bowtie2_index": ("https://genome-idx.s3.amazonaws.com/bt/GRCh38_noalt_as.zip"),
 }
 
 KRAKEN2_DB_URLS = {

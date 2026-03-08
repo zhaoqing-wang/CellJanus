@@ -38,3 +38,6 @@ test_results/
 
 # Real Reference Data
 standard_8/
+hg38.fa.gz
+GRCh38_noalt_as.zip
+bowtie2_index/
