@@ -159,20 +159,18 @@ celljanus run \
 | Metric | Value |
 |--------|-------|
 | Input reads | 1,000 paired-end |
-| QC-passed | 950 (95.0%) |
-| Host alignment rate | 31.58% |
-| Classified reads | 294 |
-| Species detected | 5 |
+| QC-passed | 900 (90.0%) |
+| Host alignment rate | 66.4% |
+| Classified reads | 300 |
+| Species detected | 3 |
 
 | Species | Reads | Fraction |
 |---------|------:|----------|
-| *Staphylococcus aureus* | 109 | 37.1% |
-| *Escherichia coli* | 79 | 26.9% |
-| *Klebsiella pneumoniae* | 56 | 19.0% |
-| *Spatula rhynchotis* | 31 | 10.5% |
-| *Megeuptychia antonoe* | 19 | 6.5% |
+| *Staphylococcus aureus* | 111 | 37.0% |
+| *Escherichia coli* | 95 | 31.7% |
+| *Klebsiella pneumoniae* | 94 | 31.3% |
 
-> *Note: The test database uses NCBI taxids that may resolve to different species names depending on the NCBI taxonomy version. This does not affect pipeline functionality.*
+> *Note: The minimal test database (`kraken2_testdb`) contains only 7 species. Bracken re-estimation at species level may merge reads from lower-abundance species into the top 3. Use a full database (e.g., `standard_8`) for comprehensive classification.*
 
 </details>
 
@@ -268,20 +266,18 @@ celljanus scrnaseq \
 | Input reads | 15,000 |
 | Cells processed | 300 |
 | Species detected | 7 |
-| Microbial reads | 2,395 |
-| Mean reads/cell | 8.0 |
+| Microbial reads | 2,350 |
+| Mean reads/cell | 7.8 |
 
 | Species | Reads | Cells | Prevalence |
 |---------|------:|------:|-----------:|
-| *Escherichia coli* | 460 | 235 | 78.3% |
-| *Prevotella* | 426 | 234 | 78.0% |
-| *Staphylococcus aureus* | 418 | 218 | 72.7% |
-| *Klebsiella pneumoniae* | 405 | 225 | 75.0% |
-| *Spatula rhynchotis* | 311 | 195 | 65.0% |
-| *Megeuptychia antonoe* | 228 | 134 | 44.7% |
-| *Sphaerobacter* | 147 | 108 | 36.0% |
-
-> *Note: Species names depend on the NCBI taxonomy version bundled with the test Kraken2 database.*
+| *Escherichia coli* | 461 | 235 | 78.3% |
+| *Pseudomonas aeruginosa* | 426 | 234 | 78.0% |
+| *Staphylococcus aureus* | 420 | 218 | 72.7% |
+| *Klebsiella pneumoniae* | 359 | 209 | 69.7% |
+| *Bacillus subtilis* | 309 | 195 | 65.0% |
+| *Salmonella enterica* | 228 | 134 | 44.7% |
+| *Streptococcus pneumoniae* | 147 | 108 | 36.0% |
 
 </details>
 

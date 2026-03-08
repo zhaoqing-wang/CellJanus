@@ -1,6 +1,9 @@
 # CellJanus Test Data
 
 Synthetic paired-end and single-end Illumina FASTQ files for quick testing.
+All microbial reads are derived from validated NCBI RefSeq genome fragments
+that classify at species level with both the minimal `kraken2_testdb` and
+the full Kraken2 `standard_8` database.
 
 ## Files
 
@@ -8,9 +11,9 @@ Synthetic paired-end and single-end Illumina FASTQ files for quick testing.
 
 | File | Description | Reads | Size |
 |------|-------------|------:|-----:|
-| `reads_R1.fastq.gz` | Paired-end R1 | 1,000 | ~127 KB |
-| `reads_R2.fastq.gz` | Paired-end R2 | 1,000 | ~128 KB |
-| `reads_SE.fastq.gz` | Single-end | 1,000 | ~127 KB |
+| `reads_R1.fastq.gz` | Paired-end R1 | 1,000 | ~126 KB |
+| `reads_R2.fastq.gz` | Paired-end R2 | 1,000 | ~127 KB |
+| `reads_SE.fastq.gz` | Single-end | 1,000 | ~126 KB |
 
 ### scRNA-seq Test Data
 
@@ -27,31 +30,44 @@ Synthetic paired-end and single-end Illumina FASTQ files for quick testing.
 | Category | Count | Template Source | Expected Behaviour |
 |----------|------:|-----------------|-------------------|
 | Host (human) | 600 | HBB (β-globin), ACTB (actin) | Aligned by Bowtie2 → host BAM |
-| Microbial | 300 | *S. aureus*, *E. coli*, *K. pneumoniae* 16S rRNA | Unmapped → Kraken2 classification |
+| Microbial | 300 | *S. aureus*, *E. coli*, *K. pneumoniae* genome fragments | Unmapped → Kraken2 classification |
 | Low-quality | 100 | Random + adapter read-through | Filtered by fastp (Q < 15) |
 
 ### scRNA-seq Test Data
 
 | Category | Count | Description |
 |----------|------:|-------------|
-| Host reads | 12,600 (42/cell × 300 cells) | Human gene fragments with cell barcodes |
-| Microbial reads | 2,400 (8/cell × 300 cells) | 7 species 16S with cell barcodes |
+| Host reads | 12,600 (42/cell × 300 cells) | Human β-globin fragments with cell barcodes |
+| Microbial reads | 2,400 (8/cell × 300 cells) | 7 species genome fragments with cell barcodes |
 
-Headers include 10x-style tags: `CB:Z:AAACCTGAGCGATGAC UB:Z:ACTGACTGACTG`
+#### Microbial Species (7)
+
+| Species | Taxid | Source Genome |
+|---------|------:|---------------|
+| *Staphylococcus aureus* | 1280 | NCTC 8325 |
+| *Escherichia coli* | 562 | K-12 MG1655 |
+| *Klebsiella pneumoniae* | 573 | HS11286 |
+| *Pseudomonas aeruginosa* | 287 | PAO1 |
+| *Bacillus subtilis* | 1423 | 168 |
+| *Salmonella enterica* | 28901 | LT2 |
+| *Streptococcus pneumoniae* | 1313 | TIGR4 |
+
+Headers include 10x-style tags: `CB:Z:<16bp_barcode> UB:Z:<12bp_UMI>`
 
 ## Format
 
-- Illumina-style headers: `@E00489:42:HVNCCCCXY:lane:tile:x:y pair:N:0:ATCACG+TTAGGC`
-- Read length: 150 bp (bulk), 91 bp (scRNA-seq)
+- Bulk headers: `@HOST_READ_1/1`, `@MICROBE_ECOLI_601/1`, `@LOWQ_READ_951/1`
+- scRNA-seq headers: `@A00123:456:ABCDEFGHI:1:1101:x:y CB:Z:<barcode> UB:Z:<umi>`
+- Read length: 150 bp (bulk), 91 bp (scRNA-seq R2)
 - Quality encoding: Phred+33
 - Compression: gzip
 
 ## Regenerate
 
 ```bash
-# Bulk test data
+# Bulk test data (generates reads_R1, reads_R2, reads_SE)
 python tests/generate_testdata.py
 
-# scRNA-seq test data
-python -c "from tests.generate_test_data import generate_scrnaseq_fastq; from pathlib import Path; generate_scrnaseq_fastq(Path('testdata/scrnaseq'))"
+# All test data (bulk + scRNA-seq)
+python tests/generate_test_data.py testdata
 ```

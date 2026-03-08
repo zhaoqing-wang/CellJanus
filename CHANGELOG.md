@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.8] — 2026-03-08
 
 - The reference part in the test dataset was fixed. (Uploaded to Github).
+- The sequencing data generation process code was optimized according to the real kraken2_standard_8 dataset.
+- The sc RNA seq test dataset was regenerated from the real kraken2_standard_8 dataset.
+- The Bulk RNA seq test data set was regenerated according to the real kraken2_standard_8 data set and the NCBI Taxonomy database.
 
 ## [0.1.7] — 2026-03-08
 
