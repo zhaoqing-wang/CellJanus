@@ -40,6 +40,56 @@ def _low_quality_string(length: int) -> str:
     return "".join(chr(random.randint(2 + 33, 12 + 33)) for _ in range(length))
 
 
+_COMP = str.maketrans("ACGTacgt", "TGCAtgca")
+
+def _revcomp(seq: str) -> str:
+    """Reverse complement of a DNA sequence."""
+    return seq.translate(_COMP)[::-1]
+
+
+def _make_pe_reads(
+    template: str,
+    read_length: int,
+    mutation_rate: float = 0.02,
+    min_q: int = 20,
+    max_q: int = 38,
+) -> tuple[str, str]:
+    """
+    Generate proper FR paired-end sequences from a template.
+
+    R1 reads forward from the fragment start.
+    R2 reads the reverse complement from the fragment end.
+    Returns (r1_seq, r2_seq) after mutation.
+    """
+    max_insert = min(len(template), read_length * 3)
+    insert_size = random.randint(read_length, max(read_length, max_insert))
+
+    max_start = max(0, len(template) - insert_size)
+    frag_start = random.randint(0, max_start)
+    frag_end = frag_start + insert_size
+
+    # R1: forward from fragment start
+    r1_seq = template[frag_start : frag_start + read_length]
+    if len(r1_seq) < read_length:
+        r1_seq += _random_seq(read_length - len(r1_seq))
+
+    # R2: reverse complement from fragment end
+    r2_start = max(frag_start, frag_end - read_length)
+    r2_seq = _revcomp(template[r2_start : r2_start + read_length])
+    if len(r2_seq) < read_length:
+        r2_seq += _random_seq(read_length - len(r2_seq))
+
+    # Apply mutations
+    def _mutate(seq: str) -> str:
+        out = list(seq)
+        for j in range(len(out)):
+            if random.random() < mutation_rate:
+                out[j] = random.choice("ACGT")
+        return "".join(out)
+
+    return _mutate(r1_seq), _mutate(r2_seq)
+
+
 # ---------------------------------------------------------------------------
 # Known test sequences — validated genome fragments from RefSeq
 # ---------------------------------------------------------------------------
@@ -48,10 +98,32 @@ def _low_quality_string(length: int) -> str:
 # length) and first 150bp (bulk read length) both resolve to the
 # correct species taxid.
 
-# Partial human β-globin gene (expected host alignment)
-HUMAN_BGLOBIN = (
-    "ATGGTGCATCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCCCTGTGGGGCAAGGTGAACGTGGATG"
-    "AAGTTGGTGGTGAGGCCCTGGGCAGGCTGCTGGTGGTCTACCCTTGGACCCAGAGGTTCTTTGAGTC"
+# Human genomic DNA fragments extracted from hg38.
+# These are contiguous genomic regions (NOT mRNA/cDNA) so they align
+# correctly to both the test host genome and real hg38 with Bowtie2.
+
+# TP53 region — chr17:7,674,800-7,675,300 (500bp, GC=57.4%)
+HUMAN_TP53 = (
+    "GGGCCACTGACAACCACCCTTAACCCCTCCTCCCAGAGACCCCAGTTGCAAACCAGACCTCAGGCGGC"
+    "TCATAGGGCACCACCACACTATGTCGAAAAGTGTTTCTGTCATCCAAATACTCCACACGCAAATTTCC"
+    "TTCCACTCGGATAAGATGCTGAGGAGGGGCCAGACCTAAGAGCAATCAGTGAGGAATCAGAGGCCTG"
+    "GGGACCCTGGGCAACCAGCCCTGTCGTCTCTCCAGCCCCAGCTGCTCACCATCGCTATCTGAGCAGCG"
+    "CTCATGGTGGGGGCAGCGCCTCACAACCTCCGTCATGTGCTGTGACTGCTTGTAGATGGCCATGGCGC"
+    "GGACGCGGGTGCCGGGCGGGGGTGTGGAATCAACCCACAGCTGCACAGGGCAGGTCTTGGCCAGTTGG"
+    "CAAAACATCTTGTTGAGGGCAGGGGAGTACTGTAGGAAGAGGAAGGAGACAGAGTTGAAAGTCAGGGC"
+    "ACAAGTGAACAGATAAAGCAACTGG"
+)
+
+# MSH2 region — chr2:47,596,500-47,597,000 (500bp, GC=51.0%)
+HUMAN_MSH2 = (
+    "AAGAGGGCTTGGATTCAAGTGTGAGAGAAATGGCAGCTCCCCATGAGGGAAGGGGCATGTTTTCTCTT"
+    "TCTTACCAGCTGTATTCTCCTGATCCAAAATCATTATTCATCATCAAAATAAAATTCCAGAGGGCCAGC"
+    "TTGTTCTGGCATGGCAAGGACAGTCAGATGACCTGAGGGGGCATAATGAGGGGAAGGATCATACAGTT"
+    "AGTGGGGCTGAGACACTGGTGGCATTGGGACAGATGAGTGGAGATCACGCCTATGCCAAGGAACTCAT"
+    "CTTCCCCTCGTGCTGCAGCCTTCAAAAGTATCTCAGCACAAGAAGAGGGAGGGAGAAAGAAAAGCTACA"
+    "CTTTCCAGAGTCCTGGAGTGGACATTGGCTATTTCTTCCCACCCAGACTCCATTGCCCTTGAGGAACAC"
+    "CTCCTCCCCTTTCTCAGCCCCTCTGGTTTGGATGAGGCAGATCCTGTGATGCTCACCCCCAACCCTTGC"
+    "CACAGGGTCAGACCAGGACC"
 )
 
 # Escherichia coli K-12 MG1655 genome fragment (taxid 562)
@@ -166,26 +238,18 @@ def generate_test_fastq(
 
     read_id = 0
 
-    # --- Host reads (human-like) ---
+    # --- Host reads (human-like, proper FR paired-end) ---
+    host_templates = [HUMAN_TP53, HUMAN_MSH2]
     for i in range(n_host_reads):
         read_id += 1
-        # Use human β-globin fragments with mutations
-        seq = HUMAN_BGLOBIN[:read_length]
-        # Introduce ~2% mutation rate
-        seq_list = list(seq)
-        for j in range(len(seq_list)):
-            if random.random() < 0.02:
-                seq_list[j] = random.choice("ACGT")
-        seq = "".join(seq_list)
-        if len(seq) < read_length:
-            seq += _random_seq(read_length - len(seq))
+        template = random.choice(host_templates)
+        r1_seq, r2_seq = _make_pe_reads(template, read_length, 0.02, 25, 38)
 
-        qual = _random_quality(len(seq), min_q=25, max_q=38)
-        records_r1.append(f"@HOST_READ_{read_id}/1\n{seq}\n+\n{qual}\n")
+        qual = _random_quality(read_length, min_q=25, max_q=38)
+        records_r1.append(f"@HOST_READ_{read_id}/1\n{r1_seq}\n+\n{qual}\n")
         if paired:
-            seq2 = _random_seq(read_length)
             qual2 = _random_quality(read_length, min_q=25, max_q=38)
-            records_r2.append(f"@HOST_READ_{read_id}/2\n{seq2}\n+\n{qual2}\n")
+            records_r2.append(f"@HOST_READ_{read_id}/2\n{r2_seq}\n+\n{qual2}\n")
 
     # --- Microbial reads (7 species with varied abundances) ---
     microbe_templates = [
@@ -205,21 +269,13 @@ def generate_test_fastq(
     for i in range(n_microbe_reads):
         read_id += 1
         template, species = random.choice(weighted_templates)
-        seq = template[:read_length]
-        seq_list = list(seq)
-        for j in range(len(seq_list)):
-            if random.random() < 0.01:
-                seq_list[j] = random.choice("ACGT")
-        seq = "".join(seq_list)
-        if len(seq) < read_length:
-            seq += _random_seq(read_length - len(seq))
+        r1_seq, r2_seq = _make_pe_reads(template, read_length, 0.01, 20, 35)
 
-        qual = _random_quality(len(seq), min_q=20, max_q=35)
-        records_r1.append(f"@MICROBE_{species}_{read_id}/1\n{seq}\n+\n{qual}\n")
+        qual = _random_quality(read_length, min_q=20, max_q=35)
+        records_r1.append(f"@MICROBE_{species}_{read_id}/1\n{r1_seq}\n+\n{qual}\n")
         if paired:
-            seq2 = _random_seq(read_length)
             qual2 = _random_quality(read_length, min_q=20, max_q=35)
-            records_r2.append(f"@MICROBE_{species}_{read_id}/2\n{seq2}\n+\n{qual2}\n")
+            records_r2.append(f"@MICROBE_{species}_{read_id}/2\n{r2_seq}\n+\n{qual2}\n")
 
     # --- Low quality reads ---
     for i in range(n_low_quality):
@@ -350,8 +406,10 @@ def generate_scrnaseq_fastq(
             r1_seq = cell_barcode + umi + _random_seq(read_length - 28)
             r1_qual = _random_quality(len(r1_seq), 25, 38)
 
-            # R2: host-like sequence (human gene fragment)
-            r2_seq = HUMAN_BGLOBIN[:read_length]
+            # R2: host-like sequence (human genomic DNA fragment)
+            host_template = random.choice([HUMAN_TP53, HUMAN_MSH2])
+            start = random.randint(0, max(0, len(host_template) - read_length))
+            r2_seq = host_template[start : start + read_length]
             if len(r2_seq) < read_length:
                 r2_seq += _random_seq(read_length - len(r2_seq))
             r2_qual = _random_quality(len(r2_seq), 25, 38)

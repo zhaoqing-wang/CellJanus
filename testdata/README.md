@@ -11,9 +11,11 @@ the full Kraken2 `standard_8` database.
 
 | File | Description | Reads | Size |
 |------|-------------|------:|-----:|
-| `reads_R1.fastq.gz` | Paired-end R1 | 1,000 | ~126 KB |
-| `reads_R2.fastq.gz` | Paired-end R2 | 1,000 | ~127 KB |
-| `reads_SE.fastq.gz` | Single-end | 1,000 | ~126 KB |
+| `reads_R1.fastq.gz` | Paired-end R1 (Illumina-style headers) | 1,000 | ~130 KB |
+| `reads_R2.fastq.gz` | Paired-end R2 (Illumina-style headers) | 1,000 | ~131 KB |
+| `reads_SE.fastq.gz` | Single-end (Illumina-style headers) | 1,000 | ~130 KB |
+| `test_R1.fastq.gz` | Paired-end R1 (simple headers) | 1,000 | ~113 KB |
+| `test_R2.fastq.gz` | Paired-end R2 (simple headers) | 1,000 | ~153 KB |
 
 ### scRNA-seq Test Data
 
@@ -29,7 +31,7 @@ the full Kraken2 `standard_8` database.
 
 | Category | Count | Template Source | Expected Behaviour |
 |----------|------:|-----------------|-------------------|
-| Host (human) | 600 | HBB (β-globin), ACTB (actin) | Aligned by Bowtie2 → host BAM |
+| Host (human) | 600 | TP53 (chr17:7,674,800–7,675,300), MSH2 (chr2:47,596,500–47,597,000) genomic DNA | Aligned by Bowtie2 → host BAM |
 | Microbial | 300 | *S. aureus*, *E. coli*, *K. pneumoniae* genome fragments | Unmapped → Kraken2 classification |
 | Low-quality | 100 | Random + adapter read-through | Filtered by fastp (Q < 15) |
 
@@ -37,7 +39,7 @@ the full Kraken2 `standard_8` database.
 
 | Category | Count | Description |
 |----------|------:|-------------|
-| Host reads | 12,600 (42/cell × 300 cells) | Human β-globin fragments with cell barcodes |
+| Host reads | 12,600 (42/cell × 300 cells) | Human genomic DNA fragments (TP53, MSH2) with cell barcodes |
 | Microbial reads | 2,400 (8/cell × 300 cells) | 7 species genome fragments with cell barcodes |
 
 #### Microbial Species (7)
@@ -56,9 +58,11 @@ Headers include 10x-style tags: `CB:Z:<16bp_barcode> UB:Z:<12bp_UMI>`
 
 ## Format
 
-- Bulk headers: `@HOST_READ_1/1`, `@MICROBE_ECOLI_601/1`, `@LOWQ_READ_951/1`
+- `reads_R1/R2/SE` headers (Illumina-style): `@E00489:42:HVNCCCCXY:2:1598:20973:16753 1:N:0:ATCACG+TTAGGC`
+- `test_R1/R2` headers (simple): `@HOST_READ_1/1`, `@MICROBE_ECOLI_601/1`, `@LOWQ_READ_951/1`
 - scRNA-seq headers: `@A00123:456:ABCDEFGHI:1:1101:x:y CB:Z:<barcode> UB:Z:<umi>`
 - Read length: 150 bp (bulk), 91 bp (scRNA-seq R2)
+- Paired-end orientation: FR (R1 forward, R2 reverse complement)
 - Quality encoding: Phred+33
 - Compression: gzip
 

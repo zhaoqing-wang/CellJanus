@@ -176,15 +176,16 @@ celljanus run \
 |--------|-------|
 | Input reads | 1,000 paired-end |
 | QC-passed | 900 (90.0%) |
-| Host alignment rate | 66.4% |
-| Classified reads | 300 |
+| Host alignment rate | 66.67% |
+| Unmapped (microbial) reads | 300 |
+| Classified reads | 300 (100%) |
 | Species detected | 3 |
 
 | Species | Reads | Fraction |
 |---------|------:|----------|
-| *Staphylococcus aureus* | 111 | 37.0% |
-| *Escherichia coli* | 95 | 31.7% |
-| *Klebsiella pneumoniae* | 94 | 31.3% |
+| *Klebsiella pneumoniae* | 124 | 41.3% |
+| *Escherichia coli* | 97 | 32.3% |
+| *Staphylococcus aureus* | 79 | 26.3% |
 
 > *Note: The minimal test database (`kraken2_testdb`) contains only 7 species. Bracken re-estimation at species level may merge reads from lower-abundance species into the top 3. Use a full database (e.g., `standard_8`) for comprehensive classification.*
 
@@ -204,16 +205,19 @@ celljanus run \
 | Metric | Value |
 |--------|-------|
 | QC-passed | 900 (90.0%) |
-| Host alignment rate | 49.9% |
-| Classified reads | 494 (54.9%) |
-| Species detected | 2 (after Bracken) |
+| Host alignment rate | 66.67% |
+| Unmapped (microbial) reads | 300 |
+| Kraken2 classified | 245 / 300 (81.67%) |
+| Bracken species detected | 0 (genus-level only) |
 
-| Species | Reads | Fraction |
-|---------|------:|----------|
-| *Homo sapiens* | 252 | 51.0% |
-| *Escherichia coli* | 241 | 48.8% |
+| Taxon (Kraken2 raw) | Level | Reads |
+|----------------------|-------|------:|
+| Enterobacteriaceae | Family | 140 |
+| *Klebsiella* | Genus | 62 |
+| *Staphylococcus* | Genus | 41 |
+| Unclassified | — | 55 |
 
-> *Kraken2 raw report also detects Klebsiella (62 reads at genus level) and Staphylococcus (65 reads at genus level), but Bracken cannot redistribute to species when only genus-level k-mer matches are found. The Enterobacteriaceae family (109 reads) encompasses E. coli, K. pneumoniae, and S. enterica reads that share conserved regions.*
+> *Host alignment rate is identical (66.67%) for both test and real references, confirming the test data faithfully simulates real Illumina paired-end sequencing. With standard_8, reads classify at genus/family level because the 500 bp test genome fragments share conserved k-mers across closely related species. Real experimental reads (longer, spanning more variable regions) achieve higher species-level resolution.*
 
 </details>
 
@@ -309,18 +313,18 @@ celljanus scrnaseq \
 | Input reads | 15,000 |
 | Cells processed | 300 |
 | Species detected | 7 |
-| Microbial reads | 2,350 |
+| Microbial reads | 2,343 |
 | Mean reads/cell | 7.8 |
 
 | Species | Reads | Cells | Prevalence |
 |---------|------:|------:|-----------:|
-| *Escherichia coli* | 461 | 235 | 78.3% |
-| *Pseudomonas aeruginosa* | 426 | 234 | 78.0% |
-| *Staphylococcus aureus* | 420 | 218 | 72.7% |
-| *Klebsiella pneumoniae* | 359 | 209 | 69.7% |
-| *Bacillus subtilis* | 309 | 195 | 65.0% |
-| *Salmonella enterica* | 228 | 134 | 44.7% |
-| *Streptococcus pneumoniae* | 147 | 108 | 36.0% |
+| *Escherichia coli* | 474 | 227 | 75.7% |
+| *Pseudomonas aeruginosa* | 401 | 226 | 75.3% |
+| *Klebsiella pneumoniae* | 397 | 216 | 72.0% |
+| *Staphylococcus aureus* | 358 | 203 | 67.7% |
+| *Bacillus subtilis* | 339 | 200 | 66.7% |
+| *Salmonella enterica* | 235 | 140 | 46.7% |
+| *Streptococcus pneumoniae* | 139 | 106 | 35.3% |
 
 > *Note: The minimal test database (`kraken2_testdb`) contains only 7 species. For comprehensive classification, use a full database such as `standard_8`.*
 
@@ -330,8 +334,8 @@ celljanus scrnaseq \
 
 ```bash
 celljanus scrnaseq \
-    --read1 testdata/scrnaseq_R1.fastq.gz \
-    --read2 testdata/scrnaseq_R2.fastq.gz \
+    --read1 testdata/scrnaseq/scrna_R1.fastq.gz \
+    --read2 testdata/scrnaseq/scrna_R2.fastq.gz \
     --kraken2-db testdata/refs/standard_8 \
     --output-dir test_results/scrnaseq_real \
     --barcode-mode 10x --min-reads 1
@@ -340,17 +344,17 @@ celljanus scrnaseq \
 | Metric | Value |
 |--------|-------|
 | Cells processed | 300 |
-| Species detected | 11 |
-| Total classified reads | 14,118 |
-| Mean reads/cell | 47.1 |
+| Species detected | 14 |
+| Total classified reads | 7,037 |
+| Mean reads/cell | 23.5 |
 
 | Species | Reads |
 |---------|------:|
-| *Homo sapiens* | 12,600 |
-| Enterobacteriaceae (family) | 711 |
-| *Pseudomonas aeruginosa* | 383 |
-| Bacillus (genus) | 274 |
-| *Streptococcus pneumoniae* | 107 |
+| *Homo sapiens* | 5,473 |
+| Enterobacteriaceae (family) | 744 |
+| *Pseudomonas aeruginosa* | 348 |
+| Bacillus (genus) | 305 |
+| *Streptococcus pneumoniae* | 97 |
 
 > *With a comprehensive database, host reads (Homo sapiens) are classified and additional taxa appear at higher taxonomic levels (family/genus). The test reads use 91 bp fragments — full-length reads from real experiments achieve higher species-level resolution.*
 

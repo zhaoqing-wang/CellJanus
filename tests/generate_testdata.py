@@ -22,19 +22,32 @@ from pathlib import Path
 random.seed(2026)
 
 # ── Reference fragments ──────────────────────────────────────────────
-# Human β-globin (HBB) — NM_000518.5, exon 1-2 junction
-HUMAN_HBB = (
-    "ATGGTGCATCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCCCTGTGGGGCAAGGTGAACGTGGATG"
-    "AAGTTGGTGGTGAGGCCCTGGGCAGGCTGCTGGTGGTCTACCCTTGGACCCAGAGGTTCTTTGAGTC"
-    "CTTTGGGGATCTGTCCACTCCTGATGCTGTTATGGGCAACCCTAAGGTGAAGGCTCATGGCAAGAAAG"
-    "TGCTCGGTGCCTTTAGTGATGGCCTGGCTCACCTGGACAACCTCAAGGGCACCTTTGCTCACTGCAGT"
+# Human genomic DNA fragments extracted from hg38.
+# These are contiguous genomic regions (NOT mRNA/cDNA) so they align
+# correctly to both the test host genome and real hg38 with Bowtie2.
+
+# TP53 region — chr17:7,674,800-7,675,300 (500bp, GC=57.4%)
+HUMAN_TP53 = (
+    "GGGCCACTGACAACCACCCTTAACCCCTCCTCCCAGAGACCCCAGTTGCAAACCAGACCTCAGGCGGC"
+    "TCATAGGGCACCACCACACTATGTCGAAAAGTGTTTCTGTCATCCAAATACTCCACACGCAAATTTCC"
+    "TTCCACTCGGATAAGATGCTGAGGAGGGGCCAGACCTAAGAGCAATCAGTGAGGAATCAGAGGCCTG"
+    "GGGACCCTGGGCAACCAGCCCTGTCGTCTCTCCAGCCCCAGCTGCTCACCATCGCTATCTGAGCAGCG"
+    "CTCATGGTGGGGGCAGCGCCTCACAACCTCCGTCATGTGCTGTGACTGCTTGTAGATGGCCATGGCGC"
+    "GGACGCGGGTGCCGGGCGGGGGTGTGGAATCAACCCACAGCTGCACAGGGCAGGTCTTGGCCAGTTGG"
+    "CAAAACATCTTGTTGAGGGCAGGGGAGTACTGTAGGAAGAGGAAGGAGACAGAGTTGAAAGTCAGGGC"
+    "ACAAGTGAACAGATAAAGCAACTGG"
 )
 
-# Human ACTB (actin beta) — NM_001101.5
-HUMAN_ACTB = (
-    "ATGGATGATGATATCGCCGCGCTCGTCGTCGACAACGGCTCCGGCATGTGCAAAGCCGGCTTCGCGGG"
-    "CGACGATGCCCCCCGGGCCGTCTTCCCCTCCATCGTGGGGCGCCCCAGGCACCAGGGCGTGATGGTGGG"
-    "CATGGGTCAGAAGGATTCCTATGTGGGCGACGAGGCCCAGAGCAAGAGAGGCATCCTCACCCTGAAGTA"
+# MSH2 region — chr2:47,596,500-47,597,000 (500bp, GC=51.0%)
+HUMAN_MSH2 = (
+    "AAGAGGGCTTGGATTCAAGTGTGAGAGAAATGGCAGCTCCCCATGAGGGAAGGGGCATGTTTTCTCTT"
+    "TCTTACCAGCTGTATTCTCCTGATCCAAAATCATTATTCATCATCAAAATAAAATTCCAGAGGGCCAGC"
+    "TTGTTCTGGCATGGCAAGGACAGTCAGATGACCTGAGGGGGCATAATGAGGGGAAGGATCATACAGTT"
+    "AGTGGGGCTGAGACACTGGTGGCATTGGGACAGATGAGTGGAGATCACGCCTATGCCAAGGAACTCAT"
+    "CTTCCCCTCGTGCTGCAGCCTTCAAAAGTATCTCAGCACAAGAAGAGGGAGGGAGAAAGAAAAGCTACA"
+    "CTTTCCAGAGTCCTGGAGTGGACATTGGCTATTTCTTCCCACCCAGACTCCATTGCCCTTGAGGAACAC"
+    "CTCCTCCCCTTTCTCAGCCCCTCTGGTTTGGATGAGGCAGATCCTGTGATGCTCACCCCCAACCCTTGC"
+    "CACAGGGTCAGACCAGGACC"
 )
 
 # Validated genome fragments from RefSeq reference genomes.
@@ -86,6 +99,13 @@ def _mutate(seq: str, rate: float = 0.02) -> str:
     return "".join(out)
 
 
+_COMP = str.maketrans("ACGTacgt", "TGCAtgca")
+
+def _revcomp(seq: str) -> str:
+    """Reverse complement of a DNA sequence."""
+    return seq.translate(_COMP)[::-1]
+
+
 def _qual_string(length: int, min_q: int = 20, max_q: int = 40) -> str:
     """Illumina-style Phred+33 quality string."""
     return "".join(chr(random.randint(min_q + 33, max_q + 33)) for _ in range(length))
@@ -109,16 +129,65 @@ def _make_read(
     max_q: int = 40,
     mutation_rate: float = 0.02,
 ) -> str:
-    """Create a single FASTQ record."""
+    """Create a single FASTQ record (for single-end)."""
     start = random.randint(0, max(0, len(template) - read_len))
     seq = template[start : start + read_len]
     if len(seq) < read_len:
-        # Pad with random bases if template too short from this start
         seq += "".join(random.choices("ACGT", k=read_len - len(seq)))
     seq = _mutate(seq, mutation_rate)
     qual = _qual_string(len(seq), min_q, max_q)
     header = _instrument_header(read_id, pair)
     return f"{header}\n{seq}\n+\n{qual}\n"
+
+
+def _make_pe_reads(
+    template: str,
+    read_len: int,
+    read_id: int,
+    min_q_r1: int = 20,
+    max_q_r1: int = 40,
+    min_q_r2: int = 18,
+    max_q_r2: int = 38,
+    mutation_rate: float = 0.02,
+) -> tuple[str, str]:
+    """
+    Create a proper FR paired-end read pair from a template.
+
+    R1 reads forward from the fragment start.
+    R2 reads the reverse complement from the fragment end.
+    This produces concordant Bowtie2 alignments.
+    """
+    # Fragment (insert) size: between read_len and template length
+    max_insert = min(len(template), read_len * 3)
+    min_insert = read_len
+    insert_size = random.randint(min_insert, max(min_insert, max_insert))
+
+    # Fragment start position
+    max_start = max(0, len(template) - insert_size)
+    frag_start = random.randint(0, max_start)
+    frag_end = frag_start + insert_size
+
+    # R1: forward read from fragment start
+    r1_seq = template[frag_start : frag_start + read_len]
+    if len(r1_seq) < read_len:
+        r1_seq += "".join(random.choices("ACGT", k=read_len - len(r1_seq)))
+    r1_seq = _mutate(r1_seq, mutation_rate)
+
+    # R2: reverse complement from fragment end
+    r2_start = max(frag_start, frag_end - read_len)
+    r2_seq = _revcomp(template[r2_start : r2_start + read_len])
+    if len(r2_seq) < read_len:
+        r2_seq += "".join(random.choices("ACGT", k=read_len - len(r2_seq)))
+    r2_seq = _mutate(r2_seq, mutation_rate)
+
+    r1_qual = _qual_string(read_len, min_q_r1, max_q_r1)
+    r2_qual = _qual_string(read_len, min_q_r2, max_q_r2)
+    r1_header = _instrument_header(read_id, 1)
+    r2_header = _instrument_header(read_id, 2)
+
+    r1_rec = f"{r1_header}\n{r1_seq}\n+\n{r1_qual}\n"
+    r2_rec = f"{r2_header}\n{r2_seq}\n+\n{r2_qual}\n"
+    return r1_rec, r2_rec
 
 
 def generate(output_dir: Path):
@@ -131,12 +200,13 @@ def generate(output_dir: Path):
     rid = 0
 
     # ── Host reads (human — 60% of total) ────────────────────────
-    host_templates = [HUMAN_HBB, HUMAN_ACTB]
+    host_templates = [HUMAN_TP53, HUMAN_MSH2]
     for _ in range(600):
         rid += 1
         tmpl = random.choice(host_templates)
-        r1_records.append(_make_read(tmpl, 150, rid, 1, 25, 38, 0.02))
-        r2_records.append(_make_read(tmpl, 150, rid, 2, 23, 37, 0.02))
+        r1_rec, r2_rec = _make_pe_reads(tmpl, 150, rid, 25, 38, 23, 37, 0.02)
+        r1_records.append(r1_rec)
+        r2_records.append(r2_rec)
         se_records.append(_make_read(tmpl, 150, rid, 1, 25, 38, 0.02))
 
     # ── Microbial reads (bacteria — 30% of total) ────────────────
@@ -144,8 +214,9 @@ def generate(output_dir: Path):
     for _ in range(300):
         rid += 1
         tmpl = random.choice(microbe_templates)
-        r1_records.append(_make_read(tmpl, 150, rid, 1, 20, 35, 0.01))
-        r2_records.append(_make_read(tmpl, 150, rid, 2, 18, 34, 0.01))
+        r1_rec, r2_rec = _make_pe_reads(tmpl, 150, rid, 20, 35, 18, 34, 0.01)
+        r1_records.append(r1_rec)
+        r2_records.append(r2_rec)
         se_records.append(_make_read(tmpl, 150, rid, 1, 20, 35, 0.01))
 
     # ── Low-quality / adapter reads (10%) ────────────────────────
