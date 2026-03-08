@@ -5,6 +5,13 @@ All notable changes to CellJanus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] — 2026-03-09
+
+### Changed
+
+- **README updated**: Corrected all test result tables to match actual pipeline output after FR paired-end and genomic DNA template fixes; fixed scRNA-seq real-reference command paths (`testdata/scrnaseq_R1.fastq.gz` -> `testdata/scrnaseq/scrna_R1.fastq.gz`); documented download output structure.
+- **testdata/README.md updated**: Replaced host template references (HBB/ACTB -> TP53/MSH2 genomic DNA); added `test_R1/R2` files to table; documented dual header formats (Illumina-style vs simple); noted FR paired-end orientation.
+
 ## [0.1.8] — 2026-03-08
 
 ### Fixed
@@ -16,8 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Test datasets regenerated**: Replaced 16S rRNA fragments with validated RefSeq genome coding-region fragments for 7 species: *E. coli* (562), *S. aureus* (1280), *K. pneumoniae* (573), *P. aeruginosa* (287), *B. subtilis* (1423), *S. enterica* (28901), *S. pneumoniae* (1313).
-- **README updated**: Corrected all test result tables to match actual pipeline output after FR paired-end and genomic DNA template fixes; fixed scRNA-seq real-reference command paths (`testdata/scrnaseq_R1.fastq.gz` → `testdata/scrnaseq/scrna_R1.fastq.gz`); documented download output structure.
-- **testdata/README.md updated**: Replaced host template references (HBB/ACTB → TP53/MSH2 genomic DNA); added `test_R1/R2` files to table; documented dual header formats (Illumina-style vs simple); noted FR paired-end orientation.
 
 ## [0.1.7] — 2026-03-08
 

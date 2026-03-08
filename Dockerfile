@@ -3,14 +3,14 @@
 #  Dual-Perspective Host–Microbe Deconvolution Pipeline
 #
 #  Build:
-#    docker build -t celljanus:0.1.8.
+#    docker build -t celljanus:0.1.9
 #
 #  Run examples:
 #    # Check tool availability
-#    docker run --rm celljanus:0.1.8 celljanus check
+#    docker run --rm celljanus:0.1.9 celljanus check
 #
 #    # Run full pipeline (mount data directory)
-#    docker run --rm -v /path/to/data:/data celljanus:0.1.8 \
+#    docker run --rm -v /path/to/data:/data celljanus:0.1.9 \
 #        celljanus run \
 #            --read1 /data/sample_R1.fastq.gz \
 #            --read2 /data/sample_R2.fastq.gz \
