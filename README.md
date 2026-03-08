@@ -78,7 +78,7 @@ celljanus check   # All tools should show ✔ Found
 ```
 
 <details>
-<summary><b>Expected output</b></summary>
+<summary><b>Check Expected Output</b></summary>
 
 ```
    ____     _ _     _
@@ -114,11 +114,27 @@ All tools available!
 **Bulk RNA-seq** requires both a host genome index and a Kraken2 database. **scRNA-seq** only requires a Kraken2 database.
 
 ```bash
-celljanus download hg38 -o ./refs           # Human genome + Bowtie2 index (~5 GB)
-celljanus download kraken2 -o ./refs        # Kraken2 standard DB (~8 GB)
+celljanus download hg38 -o ./refs           # hg38 FASTA (~940 MB) + Bowtie2 index (~3.7 GB)
+celljanus download kraken2 -o ./refs        # Kraken2 standard_8 DB (~5.9 GB)
 ```
 
 *Note: The test data (`testdata/`) and test reference databases are included in the GitHub repository and can be used without downloading any additional references. If you installed via the recommended `git clone` method ([§1.1](#11-installation)), the Quick Tests are ready to run immediately. If you installed via pip or conda from URL, `testdata/` will not be available.*
+
+<details>
+<summary><b>Download Expected Result</b></summary>
+
+```
+refs/
+├── hg38.fa.gz                              # hg38 genome FASTA
+├── GRCh38_noalt_as.zip                     # (downloaded archive, can be deleted)
+└── bowtie2_index/GRCh38_noalt_as/          # Pre-built Bowtie2 index
+    ├── GRCh38_noalt_as.{1,2,3,4}.bt2
+    └── GRCh38_noalt_as.rev.{1,2}.bt2
+```
+
+The Bowtie2 index prefix for downstream commands is: `./refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as`
+
+</details>
 
 ---
 
@@ -172,6 +188,33 @@ celljanus run \
 
 > *Note: The minimal test database (`kraken2_testdb`) contains only 7 species. Bracken re-estimation at species level may merge reads from lower-abundance species into the top 3. Use a full database (e.g., `standard_8`) for comprehensive classification.*
 
+<br />
+
+**With real references** (hg38 + standard_8):
+
+```bash
+celljanus run \
+    --read1 testdata/reads_R1.fastq.gz \
+    --read2 testdata/reads_R2.fastq.gz \
+    --host-index testdata/refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as \
+    --kraken2-db testdata/refs/standard_8 \
+    --output-dir test_results/bulk_real
+```
+
+| Metric | Value |
+|--------|-------|
+| QC-passed | 900 (90.0%) |
+| Host alignment rate | 49.9% |
+| Classified reads | 494 (54.9%) |
+| Species detected | 2 (after Bracken) |
+
+| Species | Reads | Fraction |
+|---------|------:|----------|
+| *Homo sapiens* | 252 | 51.0% |
+| *Escherichia coli* | 241 | 48.8% |
+
+> *Kraken2 raw report also detects Klebsiella (62 reads at genus level) and Staphylococcus (65 reads at genus level), but Bracken cannot redistribute to species when only genus-level k-mer matches are found. The Enterobacteriaceae family (109 reads) encompasses E. coli, K. pneumoniae, and S. enterica reads that share conserved regions.*
+
 </details>
 
 ### 2.2 Real Data
@@ -179,12 +222,12 @@ celljanus run \
 ```bash
 celljanus run \
     -1 sample_R1.fastq.gz -2 sample_R2.fastq.gz \
-    -x ./refs/bowtie2_index/GRCh38_noalt_as \
+    -x ./refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as \
     -d ./refs/standard_8 \
     -o ./results --threads 8
 ```
 
-**Important: Download reference databases first (see [Section 1.3](#13-download-reference-databases)).**
+**Important: Download reference databases first (see [Section 1.3](#13-download-reference-databases)). The `-x` path must point to the Bowtie2 index prefix (without `.bt2` extension).**
 
 ### 2.3 Advanced Options
 
@@ -195,7 +238,7 @@ celljanus run \
 # Custom QC and classification parameters
 celljanus run \
     -1 sample_R1.fastq.gz -2 sample_R2.fastq.gz \
-    -x ./refs/bowtie2_index/GRCh38_noalt_as \
+    -x ./refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as \
     -d ./refs/standard_8 -o ./results --threads 8 \
     --min-quality 20 --min-length 50 \
     --confidence 0.1 --bracken-level G \
@@ -278,6 +321,38 @@ celljanus scrnaseq \
 | *Bacillus subtilis* | 309 | 195 | 65.0% |
 | *Salmonella enterica* | 228 | 134 | 44.7% |
 | *Streptococcus pneumoniae* | 147 | 108 | 36.0% |
+
+> *Note: The minimal test database (`kraken2_testdb`) contains only 7 species. For comprehensive classification, use a full database such as `standard_8`.*
+
+<br />
+
+**With real references** (standard_8):
+
+```bash
+celljanus scrnaseq \
+    --read1 testdata/scrnaseq_R1.fastq.gz \
+    --read2 testdata/scrnaseq_R2.fastq.gz \
+    --kraken2-db testdata/refs/standard_8 \
+    --output-dir test_results/scrnaseq_real \
+    --barcode-mode 10x --min-reads 1
+```
+
+| Metric | Value |
+|--------|-------|
+| Cells processed | 300 |
+| Species detected | 11 |
+| Total classified reads | 14,118 |
+| Mean reads/cell | 47.1 |
+
+| Species | Reads |
+|---------|------:|
+| *Homo sapiens* | 12,600 |
+| Enterobacteriaceae (family) | 711 |
+| *Pseudomonas aeruginosa* | 383 |
+| Bacillus (genus) | 274 |
+| *Streptococcus pneumoniae* | 107 |
+
+> *With a comprehensive database, host reads (Homo sapiens) are classified and additional taxa appear at higher taxonomic levels (family/genus). The test reads use 91 bp fragments — full-length reads from real experiments achieve higher species-level resolution.*
 
 </details>
 
@@ -420,7 +495,7 @@ from celljanus.pipeline import run_pipeline
 
 cfg = CellJanusConfig(
     output_dir=Path("./results"),
-    host_index=Path("./refs/bowtie2_index/GRCh38_noalt_as"),
+    host_index=Path("./refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as"),
     kraken2_db=Path("./refs/standard_8"),
     threads=8,
 )

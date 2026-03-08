@@ -7,10 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.8] — 2026-03-08
 
-- The reference part in the test dataset was fixed. (Uploaded to Github).
-- The sequencing data generation process code was optimized according to the real kraken2_standard_8 dataset.
-- The sc RNA seq test dataset was regenerated from the real kraken2_standard_8 dataset.
-- The Bulk RNA seq test data set was regenerated according to the real kraken2_standard_8 data set and the NCBI Taxonomy database.
+### Fixed
+
+- **Bowtie2 index download URL**: Updated S3 URL prefix from `bt2/` to `bt/` in `download.py` — the old path returned HTTP 404 due to AWS bucket restructuring.
+
+### Changed
+
+- **Test datasets regenerated**: Replaced 16S rRNA fragments with validated RefSeq genome coding-region fragments for 7 species: *E. coli* (562), *S. aureus* (1280), *K. pneumoniae* (573), *P. aeruginosa* (287), *B. subtilis* (1423), *S. enterica* (28901), *S. pneumoniae* (1313).
+- **README updated**: Added real-reference test results (hg38 + standard_8) for both bulk and scRNA-seq modes; clarified Bowtie2 index prefix path; documented download output structure.
+- **testdata/README.md updated**: Replaced "16S rRNA" references with "genome fragments"; added species table with NCBI taxids and RefSeq source accessions.
 
 ## [0.1.7] — 2026-03-08
 
