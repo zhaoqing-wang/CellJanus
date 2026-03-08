@@ -21,10 +21,3 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
-
-# Large data
-refs/
-*.fastq.gz
-*.bam
-*.bai
-*.log
