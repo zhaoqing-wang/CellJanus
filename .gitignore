@@ -35,3 +35,6 @@ Thumbs.db
 
 # Test results
 test_results/
+
+# Real Reference Data
+standard_8/
