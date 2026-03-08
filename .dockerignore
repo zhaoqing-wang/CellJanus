@@ -22,7 +22,7 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Large data (not needed inside image)
+# Large data
 refs/
 *.fastq.gz
 *.bam

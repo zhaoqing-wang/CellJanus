@@ -5,9 +5,10 @@ All notable changes to CellJanus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.7] — 2026-03-07
+## [0.1.7] — 2026-03-08
 
 - Improved complete automatic release to PyPI following Github release.
+- Iteratively optimize the version, description of the integrated CellJanus in Docker, as well as the description in pyproject.toml.
 - Optimized README.md file presentation, authoring, and examples.
 - Fixed and improved some code functions.
 
