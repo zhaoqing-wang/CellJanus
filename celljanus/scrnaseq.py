@@ -568,22 +568,42 @@ def _extract_barcodes_to_file(
     else:
         extract_fn = extract_barcode_auto
 
+    cb_len = barcode_cfg.cb_length   # default 16 for 10x v3
+    umi_len = barcode_cfg.umi_length  # default 12 for 10x v3
+    min_seq_len = cb_len + umi_len    # 28 for 10x v3
+
     opener = gzip.open if str(fastq_path).endswith(".gz") else open
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     total_reads = 0
     n_with_barcode = 0
+    n_from_seq = 0
 
     with opener(fastq_path, "rt") as fh, open(output_path, "w") as out:
         while True:
             header = fh.readline()
             if not header:
                 break
-            fh.readline()   # sequence — discard
+            sequence = fh.readline().rstrip("\n")  # keep for sequence-based extraction
             fh.readline()   # + line   — discard
             fh.readline()   # quality  — discard
 
+            # Try header-based extraction first (CB:Z:/UB:Z: tags)
             cb, umi = extract_fn(header)
+
+            # Fallback: extract barcode & UMI from R1 sequence
+            # Real 10x Chromium R1: first cb_len bp = cell barcode,
+            # next umi_len bp = UMI (e.g. 16+12 = 28 bp for v3)
+            if cb is None and len(sequence) >= min_seq_len:
+                cb = sequence[:cb_len]
+                umi = sequence[cb_len:cb_len + umi_len]
+                # Reject if barcode contains N
+                if "N" in cb:
+                    cb = None
+                    umi = None
+                else:
+                    n_from_seq += 1
+
             total_reads += 1
 
             if cb:
@@ -599,6 +619,12 @@ def _extract_barcodes_to_file(
                     f"({n_with_barcode:,} with barcodes, "
                     f"{100 * n_with_barcode / total_reads:.1f}%)"
                 )
+
+    if n_from_seq > 0:
+        log.info(
+            f"[scRNA-seq] Barcodes extracted from sequence: {n_from_seq:,} "
+            f"(header tags: {n_with_barcode - n_from_seq:,})"
+        )
 
     return total_reads, n_with_barcode
 

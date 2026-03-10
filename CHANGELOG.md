@@ -5,6 +5,12 @@ All notable changes to CellJanus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] — 2026-03-10
+
+### Changed
+
+- **Sequence-based barcode extraction**: When R1 headers lack `CB:Z:`/`UB:Z:` tags (standard for raw 10x Chromium FASTQ), barcodes are now extracted directly from the R1 sequence (first 16 bp = cell barcode, next 12 bp = UMI for v3 chemistry). Reads with `N` in the barcode are filtered out.
+
 ## [0.2.0] — 2026-03-10
 
 ### Changed

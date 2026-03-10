@@ -10,5 +10,5 @@ Supports:
   - scRNA-seq with per-cell barcode tracking (10x Genomics, Parse Bio)
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __author__ = "CellJanus Team"
