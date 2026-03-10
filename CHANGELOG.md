@@ -5,6 +5,16 @@ All notable changes to CellJanus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-03-10
+
+### Changed
+
+- **Memory-efficient scRNA-seq pipeline**: Rewrote barcode extraction (Step 1) to stream R1 FASTQ to a lightweight temp file instead of accumulating all reads in a Python dict. Eliminates the ~30 GB peak memory that caused OOM kills on large 10x datasets (~170 M reads). New peak memory: ~1–2 GB regardless of dataset size.
+- **Streaming Kraken2 join (Step 3)**: Position-based lockstep iteration of Kraken2 output and barcode temp file replaces the O(n) read-ID dict lookup, using O(cells × species) memory instead of O(total_reads).
+- **R2-only classification (Step 2)**: When R2 is provided, Kraken2 now classifies R2 alone (the cDNA insert) rather than paired R1+R2. For 10x v3 chemistry R1 is 28 bp (barcode+UMI), shorter than k=35, so it contributed zero k-mers; R2-only gives identical results and halves Kraken2 I/O.
+- **Progress logging**: Step 1 now logs progress every 5 M reads for long-running jobs.
+- **Return dict cleaned**: `run_scrnaseq_classification()` no longer returns `barcode_reads` (the massive dict was never used downstream but kept ~30 GB alive during visualization).
+
 ## [0.1.9] — 2026-03-09
 
 ### Changed

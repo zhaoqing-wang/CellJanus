@@ -526,6 +526,127 @@ def parse_kraken2_output_with_barcodes(
     return abundance
 
 
+# ---------------------------------------------------------------------------
+# Memory-efficient helpers for large-scale scRNA-seq (v0.2.0)
+# ---------------------------------------------------------------------------
+
+
+def _extract_barcodes_to_file(
+    fastq_path: Path,
+    output_path: Path,
+    *,
+    barcode_cfg: Optional[BarcodeConfig] = None,
+) -> tuple[int, int]:
+    """
+    Stream R1 FASTQ and write cell-barcode + UMI to a lightweight temp file.
+
+    One line per read, in input order:
+        cell_barcode<TAB>umi
+    Empty strings when barcode/UMI is absent.
+
+    Memory: O(1) — only GZIP decompression buffer is held.
+
+    Returns (total_reads, n_with_barcode).
+    """
+    log = get_logger()
+    if barcode_cfg is None:
+        barcode_cfg = BarcodeConfig()
+
+    # Select extraction function
+    if barcode_cfg.mode == "10x":
+        extract_fn = extract_barcode_10x
+    elif barcode_cfg.mode == "auto":
+        extract_fn = extract_barcode_auto
+    elif barcode_cfg.mode == "custom" and barcode_cfg.cb_pattern:
+        cb_re = re.compile(barcode_cfg.cb_pattern)
+        ub_re = re.compile(barcode_cfg.ub_pattern) if barcode_cfg.ub_pattern else None
+
+        def extract_fn(header):
+            cb_m = cb_re.search(header)
+            ub_m = ub_re.search(header) if ub_re else None
+            return (cb_m.group(1) if cb_m else None, ub_m.group(1) if ub_m else None)
+    else:
+        extract_fn = extract_barcode_auto
+
+    opener = gzip.open if str(fastq_path).endswith(".gz") else open
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    total_reads = 0
+    n_with_barcode = 0
+
+    with opener(fastq_path, "rt") as fh, open(output_path, "w") as out:
+        while True:
+            header = fh.readline()
+            if not header:
+                break
+            fh.readline()   # sequence — discard
+            fh.readline()   # + line   — discard
+            fh.readline()   # quality  — discard
+
+            cb, umi = extract_fn(header)
+            total_reads += 1
+
+            if cb:
+                n_with_barcode += 1
+                out.write(f"{cb}\t{umi or ''}\n")
+            else:
+                out.write("\t\n")
+
+            # Progress every 5 million reads
+            if total_reads % 5_000_000 == 0:
+                log.info(
+                    f"[scRNA-seq]   ... {total_reads:,} reads processed "
+                    f"({n_with_barcode:,} with barcodes, "
+                    f"{100 * n_with_barcode / total_reads:.1f}%)"
+                )
+
+    return total_reads, n_with_barcode
+
+
+def _parse_kraken2_with_barcode_file(
+    kraken2_output: Path,
+    barcode_file: Path,
+) -> CellMicrobialAbundance:
+    """
+    Stream Kraken2 output and barcode temp file in lockstep.
+
+    Both files have one line per input read in the same order
+    (Kraken2 preserves input order), so position-based joining
+    uses O(cells × species) memory instead of O(total_reads).
+    """
+    log = get_logger()
+    abundance = CellMicrobialAbundance()
+
+    n_classified = 0
+    n_with_barcode = 0
+    n_total = 0
+
+    with open(kraken2_output, "r") as k2_fh, open(barcode_file, "r") as bc_fh:
+        for k2_line, bc_line in zip(k2_fh, bc_fh):
+            n_total += 1
+            parts = k2_line.strip().split("\t")
+            if len(parts) < 5 or parts[0] != "C":
+                continue
+
+            n_classified += 1
+            taxon = parts[2]
+
+            bc_parts = bc_line.strip().split("\t")
+            cb = bc_parts[0] if bc_parts[0] else None
+            umi = bc_parts[1] if len(bc_parts) > 1 and bc_parts[1] else None
+
+            if cb:
+                abundance.add_classification(cb, taxon, umi=umi)
+                n_with_barcode += 1
+
+    log.info(
+        f"Parsed Kraken2 output: {n_classified:,} classified reads, "
+        f"{n_with_barcode:,} with cell barcodes"
+    )
+
+    return abundance
+
+
 def run_scrnaseq_classification(
     read1: Path,
     kraken2_db: Path,
@@ -580,33 +701,46 @@ def run_scrnaseq_classification(
 
     log.info(f"[scRNA-seq] Processing {read1.name} ({file_size_human(read1)})")
 
-    # Step 1: Parse barcodes from R1 (or R2 if R1 has no barcodes)
+    # Step 1: Extract barcodes from R1 → temp file  (streaming, ~0 RAM)
     log.info("[scRNA-seq] Step 1/3: Extracting cell barcodes and UMIs")
-    barcode_reads: dict[str, CellBarcodeRead] = {}
-    n_with_barcode = 0
-    total_reads = 0
+    temp_dir = output_dir / "tmp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    barcode_temp = temp_dir / "barcode_map.tsv"
 
-    for chunk in parse_fastq_with_barcodes(
-        read1, barcode_cfg=barcode_cfg, chunk_size=cfg.chunk_size
-    ):
-        for br in chunk:
-            total_reads += 1
-            barcode_reads[br.read_id] = br
-            if br.has_barcode:
-                n_with_barcode += 1
-
-    log.info(
-        f"[scRNA-seq] Extracted barcodes: {n_with_barcode:,} / {total_reads:,} reads ({100 * n_with_barcode / total_reads:.1f}%)"
+    total_reads, n_with_barcode = _extract_barcodes_to_file(
+        read1, barcode_temp, barcode_cfg=barcode_cfg
     )
 
-    # Step 2: Run Kraken2 classification
+    if total_reads == 0:
+        raise ValueError(f"No reads found in {read1}")
+
+    log.info(
+        f"[scRNA-seq] Extracted barcodes: {n_with_barcode:,} / {total_reads:,} reads "
+        f"({100 * n_with_barcode / total_reads:.1f}%)"
+    )
+
+    # Step 2: Classify biological reads with Kraken2
+    # For scRNA-seq R2 carries the cDNA insert; R1 is barcode+UMI (28 bp
+    # for 10x v3 — shorter than Kraken2's default k=35, yielding 0 k-mers).
+    # Classifying R2 alone gives identical results and halves Kraken2 I/O.
     log.info("[scRNA-seq] Step 2/3: Running Kraken2 classification")
     classify_dir = output_dir / "classification"
-    report_path, output_path = run_kraken2(read1, kraken2_db, classify_dir, read2=read2, cfg=cfg)
+    classify_input = read2 if read2 else read1
+    report_path, output_path = run_kraken2(
+        classify_input, kraken2_db, classify_dir, cfg=cfg
+    )
 
-    # Step 3: Map classifications to barcodes
+    # Step 3: Position-based join  (streaming, ~0 RAM)
+    # Both barcode_map.tsv and Kraken2 output have one line per input read
+    # in the same order, so we iterate them in lockstep.
     log.info("[scRNA-seq] Step 3/3: Mapping classifications to cell barcodes")
-    abundance = parse_kraken2_output_with_barcodes(output_path, barcode_reads)
+    abundance = _parse_kraken2_with_barcode_file(output_path, barcode_temp)
+
+    # Clean up temp barcode file
+    try:
+        barcode_temp.unlink()
+    except OSError:
+        pass
 
     # Export results - comprehensive CSV outputs
     tables_dir = output_dir / "tables"
@@ -665,7 +799,6 @@ def run_scrnaseq_classification(
         "species_summary_path": species_summary_path,
         "cell_summary_path": cell_summary_path,
         "matrix_df": matrix_df,
-        "barcode_reads": barcode_reads,
         "summary": summary,
     }
 
