@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [dev] — 2026-03-12
+
+### Summary
+
+- **scRNA-seq run completion output improved**: now prints a final green completion panel with elapsed time and output directory, aligned with bulk mode style.
+- **System identification remains explicit in scRNA-seq mode**: startup output includes OS/CPU/RAM/Threads/MaxMem plus input/output panel for easier run auditing.
+- **`cell_microbe_summary` layout optimized**: adjusted figure size/top spacing to prevent main title overlap with subplot titles in PNG/PDF exports.
+- **`scrnaseq_dashboard` key-metrics readability improved**: long first metric label was shortened and the `--min-reads` note moved to a subtitle to avoid text/value overlap.
+---
+
 ## [0.2.2] — 2026-03-12
 
 ### Summary

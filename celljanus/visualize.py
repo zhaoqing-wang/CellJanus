@@ -566,7 +566,7 @@ def plot_cell_microbe_summary(
     total_cells = len(matrix_df)
     total_species = len(matrix_df.columns)
 
-    fig = plt.figure(figsize=(16, 5))
+    fig = plt.figure(figsize=(16, 6))
     gs = fig.add_gridspec(1, 3, wspace=0.3)
 
     # Panel 1: Reads per cell distribution
@@ -634,8 +634,8 @@ def plot_cell_microbe_summary(
     else:
         ax3.set_xlim(right=x_max * 2.0)  # 2x margin for linear scale
 
-    fig.suptitle(title, fontsize=16, fontweight="bold", y=0.98)
-    fig.subplots_adjust(top=0.92)
+    fig.suptitle(title, fontsize=16, fontweight="bold", y=0.99)
+    fig.subplots_adjust(top=0.88)
 
     return _save(fig, output_path, dpi=cfg.dpi)
 
@@ -870,7 +870,7 @@ def plot_scrnaseq_dashboard(
     richness = (matrix_df > 0).sum(axis=1)
 
     metrics = [
-        ("Cells With Microbe (passing --min-reads)", f"{total_cells:,}"),
+        ("Cells With Microbe", f"{total_cells:,}"),
         ("Species Detected", f"{total_species}"),
         (
             "Total Microbial Reads",
@@ -896,6 +896,18 @@ def plot_scrnaseq_dashboard(
         ha="center",
         va="top",
     )
+    ax4.text(
+        0.5,
+        y_pos,
+        "(passing --min-reads filter)",
+        transform=ax4.transAxes,
+        fontsize=9,
+        ha="center",
+        va="top",
+        color="#666666",
+        style="italic",
+    )
+    y_pos -= 0.08
     for label, value in metrics:
         ax4.text(
             0.15, y_pos, label, transform=ax4.transAxes, fontsize=12, va="top", fontweight="medium"

@@ -420,14 +420,19 @@ def scrnaseq_cmd(
     threads,
 ):
     """Run scRNA-seq microbial classification with per-cell abundance tracking."""
+    import time
+
     from celljanus.scrnaseq import (
         BarcodeConfig,
         run_scrnaseq_classification,
         detect_wsl2,
         wsl2_io_warning,
     )
+    from celljanus.utils import fmt_elapsed
     from celljanus.visualize import generate_scrnaseq_plots
     from rich.panel import Panel
+
+    t0 = time.perf_counter()
 
     cfg = CellJanusConfig(
         output_dir=Path(output_dir),
@@ -507,8 +512,14 @@ def scrnaseq_cmd(
     tbl.add_row("Mean reads / cell (filtered)", f"{summary['mean_reads_per_cell']:.1f}")
     log_renderable(tbl)
 
-    log.info(f"[green]Cell × species matrix: {result['matrix_path']}[/green]")
-    log.info(f"[green]Long-format table: {result['long_path']}[/green]")
+    elapsed = time.perf_counter() - t0
+    log_renderable(
+        Panel.fit(
+            f"[bold green]Pipeline completed in {fmt_elapsed(elapsed)}[/bold green]\n"
+            f"Output directory: {output_dir}",
+            border_style="green",
+        )
+    )
 
 
 # ======================================================================
