@@ -29,7 +29,6 @@ celljanus check
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import click
 from rich.console import Console
@@ -80,7 +79,6 @@ def check():
     tbl.add_column("Status")
     tbl.add_column("Path")
 
-    required = {"fastp", "bowtie2", "samtools", "kraken2", "bracken"}
     optional = {"bowtie2-build"}
     all_required_ok = True
     for name, path in tools.items():
@@ -404,9 +402,24 @@ def visualize_cmd(bracken_file, output_dir, top_n, fmt):
 @click.option(
     "--whitelist", "-w", default=None, type=click.Path(exists=True), help="Cell barcode whitelist."
 )
+@click.option(
+    "--remove-host-taxa/--keep-host-taxa",
+    default=True,
+    help="Remove host/root/non-informative taxa from scRNA-seq output before cell aggregation.",
+)
 @click.option("--min-reads", default=1, help="Minimum reads per cell to include (default: 1).")
 @click.option("--threads", "-t", default=None, type=int, help="Number of threads.")
-def scrnaseq_cmd(read1, read2, kraken2_db, output_dir, barcode_mode, whitelist, min_reads, threads):
+def scrnaseq_cmd(
+    read1,
+    read2,
+    kraken2_db,
+    output_dir,
+    barcode_mode,
+    whitelist,
+    remove_host_taxa,
+    min_reads,
+    threads,
+):
     """Run scRNA-seq microbial classification with per-cell abundance tracking."""
     console.print(BANNER, style="bold magenta")
     console.print("[bold blue]scRNA-seq Mode: Per-Cell Microbial Classification[/bold blue]\n")
@@ -441,6 +454,7 @@ def scrnaseq_cmd(read1, read2, kraken2_db, output_dir, barcode_mode, whitelist, 
     barcode_cfg = BarcodeConfig(
         mode=barcode_mode,
         whitelist_path=Path(whitelist) if whitelist else None,
+        remove_host_taxa=remove_host_taxa,
         min_reads_per_cell=min_reads,
     )
 
@@ -453,9 +467,6 @@ def scrnaseq_cmd(read1, read2, kraken2_db, output_dir, barcode_mode, whitelist, 
         barcode_cfg=barcode_cfg,
         cfg=cfg,
     )
-
-    # Generate visualizations
-    import pandas as pd
 
     matrix_df = result["matrix_df"]
     if len(matrix_df) > 0:
@@ -477,8 +488,9 @@ def scrnaseq_cmd(read1, read2, kraken2_db, output_dir, barcode_mode, whitelist, 
     tbl = Table(title="scRNA-seq Microbial Classification Results", show_lines=True)
     tbl.add_column("Metric", style="bold cyan")
     tbl.add_column("Value", style="green")
-    tbl.add_row("Total cells processed", f"{summary['total_cells']:,}")
-    tbl.add_row("Cells with microbes", f"{summary['cells_with_microbes']:,}")
+    tbl.add_row("Raw barcodes with retained classifications", f"{summary['total_cells_raw']:,}")
+    tbl.add_row("Cells passing min-reads filter", f"{summary['total_cells']:,}")
+    tbl.add_row("Cells filtered out", f"{summary['cells_filtered_out']:,}")
     tbl.add_row("Species detected", f"{summary['species_detected']}")
     tbl.add_row("Total microbial reads", f"{summary['total_microbial_reads']:,}")
     tbl.add_row("Mean reads/cell", f"{summary['mean_reads_per_cell']:.1f}")

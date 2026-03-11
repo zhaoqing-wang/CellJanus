@@ -223,10 +223,18 @@ def classify_and_quantify(
         parse_bracken_output(bracken_path) if bracken_path and bracken_path.exists() else None
     )
 
-    # Summary statistics from Kraken2 report
-    total_classified = kraken2_df.loc[kraken2_df["rank"] == "U", "reads_clade"]
-    unclassified = int(total_classified.iloc[0]) if len(total_classified) > 0 else 0
-    total_reads = kraken2_df["reads_clade"].iloc[0] if len(kraken2_df) > 0 else 0
+    # Summary statistics from Kraken2 report.
+    # In Kraken2 reports the first row is not guaranteed to be the total.
+    # For mixed outputs the unclassified row (rank U) may appear first, while
+    # the classified total is represented by the root node (taxid 1 / rank R).
+    unclassified_rows = kraken2_df.loc[kraken2_df["rank"] == "U", "reads_clade"]
+    root_rows = kraken2_df.loc[
+        (kraken2_df["rank"].astype(str).str.startswith("R")) | (kraken2_df["taxid"] == 1),
+        "reads_clade",
+    ]
+    unclassified = int(unclassified_rows.iloc[0]) if len(unclassified_rows) > 0 else 0
+    classified_reads = int(root_rows.max()) if len(root_rows) > 0 else 0
+    total_reads = classified_reads + unclassified
 
     if bracken_df is not None and len(bracken_df) > 0:
         n_species = len(bracken_df)
@@ -242,7 +250,7 @@ def classify_and_quantify(
             top5 = "(none)"
 
     summary = (
-        f"Classified reads: {total_reads - unclassified:,} / {total_reads:,}\n"
+        f"Classified reads: {classified_reads:,} / {total_reads:,}\n"
         f"Unclassified: {unclassified:,}\n"
         f"Species detected: {n_species}\n"
         f"\nTop 5 species:\n{top5}"

@@ -392,6 +392,8 @@ celljanus scrnaseq \
 **Important: Download the Kraken2 database first (see [Section 1.3](#13-download-reference-databases)). Whitelist files are typically provided by 10x Genomics (e.g., `3M-february-2018.txt.gz` for v3 chemistry).**
 
 > **Note**: When barcodes list is unavailable, recommend setting min reads to 50 or higher to prevent excessive cell identification and memory/IO overflow.
+>
+> **Default filtering**: CellJanus removes host/root/non-informative taxa such as `Homo sapiens (taxid 9606)`, `cellular organisms (taxid 131567)`, `root (taxid 1)`, and `other sequences (taxid 28384)` before per-cell aggregation. Use `--keep-host-taxa` if you need raw unfiltered output.
 
 <details>
 <summary><b>WSL2 optimization</b></summary>
@@ -481,9 +483,16 @@ adata[common].obsm["X_microbe"] = microbe_df.loc[common].values
 | `cell_species_counts.csv` | Raw counts (cells × species) |
 | `cell_species_normalized.csv` | CPM-normalized for Seurat/Scanpy |
 | `cell_species_long.csv` | Tidy format for ggplot2/seaborn |
-| `species_summary.csv` | Per-species statistics |
-| `cell_summary.csv` | Per-cell diversity metrics |
-| `pipeline_summary.csv` | Pipeline metrics |
+| `species_summary.csv` | Per-species statistics for cells passing `--min-reads` |
+| `cell_summary.csv` | Per-cell diversity metrics for cells passing `--min-reads` |
+| `pipeline_summary.csv` | Pipeline metrics with both filtered output counts and raw pre-filter counts |
+
+**Metric definitions**
+
+- `Raw barcodes with retained classifications`: number of cell barcodes with at least one retained taxonomic assignment before applying `--min-reads`.
+- `Cells passing min-reads filter`: number of cells exported to `cell_species_counts.csv`, `cell_summary.csv`, and `cell_species_normalized.csv`.
+- `Mean reads / cell`: calculated only across cells that pass `--min-reads`, so it matches the exported matrix.
+- `Species detected`: taxa remaining after host/root filtering and `--min-reads` cell filtering.
 
 ---
 
@@ -519,6 +528,7 @@ Run `celljanus <command> --help` for full option details.
 | `--bracken-level` | S | Taxonomic level (D/P/C/O/F/G/S) |
 | `--barcode-mode` | 10x | Barcode format: 10x / parse / auto (scRNA-seq) |
 | `-w, --whitelist` | — | Cell barcode whitelist (scRNA-seq) |
+| `--remove-host-taxa / --keep-host-taxa` | remove | Remove host/root/non-informative taxa before per-cell aggregation (scRNA-seq) |
 | `--min-reads` | 1 | Min reads per cell (scRNA-seq) |
 | `--skip-qc` | — | Skip QC step (bulk) |
 | `--skip-visualize` | — | Skip visualization step (bulk) |

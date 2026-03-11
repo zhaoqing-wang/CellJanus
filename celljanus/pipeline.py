@@ -157,7 +157,6 @@ class PipelineResult:
             )
         tbl.add_row("Total time", fmt_elapsed(self.elapsed_seconds), "")
 
-        buf = console.export_text() if hasattr(console, "export_text") else ""
         return f"Pipeline completed in {fmt_elapsed(self.elapsed_seconds)}"
 
 
@@ -197,8 +196,6 @@ def run_pipeline(
     log.info(f"System: {cfg.system_summary}")
     result = PipelineResult()
     t0 = time.perf_counter()
-    paired = read2 is not None
-
     # ---- Banner ----
     console.print(
         Panel.fit(
@@ -215,11 +212,13 @@ def run_pipeline(
     # ================================================================
     if not skip_qc:
         log.info("[bold]Step 1/5: Quality Control (fastp)[/bold]")
+        step_t0 = time.perf_counter()
         qc_dir = cfg.output_dir / "01_qc"
         qc_r1, qc_r2, qc_report = run_qc(read1, qc_dir, read2=read2, cfg=cfg)
         result.qc_r1, result.qc_r2, result.qc_report = qc_r1, qc_r2, qc_report
         read1_for_align = qc_r1
         read2_for_align = qc_r2
+        log.info(f"Step 1/5 completed in {time.perf_counter() - step_t0:.1f}s")
     else:
         log.info("Skipping QC (--skip-qc)")
         read1_for_align = read1
@@ -230,6 +229,7 @@ def run_pipeline(
     # ================================================================
     if not skip_align:
         log.info("[bold]Step 2/5: Host Genome Alignment (Bowtie2)[/bold]")
+        step_t0 = time.perf_counter()
         if cfg.host_index is None:
             raise ValueError(
                 "Host genome index not set. Use --host-index or 'celljanus download hg38' first."
@@ -243,10 +243,12 @@ def run_pipeline(
             cfg=cfg,
         )
         result.host_bam = sorted_bam
+        log.info(f"Step 2/5 completed in {time.perf_counter() - step_t0:.1f}s")
 
         # Step 3: Unmapped reads are captured directly by Bowtie2
         # (--un-conc-gz for PE, --un-gz for SE)
         log.info("[bold]Step 3/5: Unmapped Read Extraction[/bold]")
+        step_t0 = time.perf_counter()
         result.unmapped_r1, result.unmapped_r2 = unmapped_r1, unmapped_r2
 
         # Count unmapped reads for logging
@@ -256,6 +258,7 @@ def run_pipeline(
         # Also produce a host-only BAM (for single-cell gene expression)
         host_mapped = extract_mapped_host(sorted_bam, align_dir, cfg=cfg)
         result.host_mapped_bam = host_mapped
+        log.info(f"Step 3/5 completed in {time.perf_counter() - step_t0:.1f}s")
     else:
         log.info("Skipping alignment (--skip-align)")
         # If user skips alignment, they must provide unmapped reads
@@ -267,6 +270,7 @@ def run_pipeline(
     # ================================================================
     if not skip_classify:
         log.info("[bold]Step 4/5: Microbial Classification (Kraken2 + Bracken)[/bold]")
+        step_t0 = time.perf_counter()
         if cfg.kraken2_db is None:
             raise ValueError(
                 "Kraken2 database not set. Use --kraken2-db or "
@@ -289,6 +293,7 @@ def run_pipeline(
             result.bracken_path = cls_result["bracken_path"]
             result.bracken_df = cls_result["bracken_df"]
             result.classify_summary = cls_result["summary"]
+        log.info(f"Step 4/5 completed in {time.perf_counter() - step_t0:.1f}s")
     else:
         log.info("Skipping classification (--skip-classify)")
 
@@ -297,6 +302,7 @@ def run_pipeline(
     # ================================================================
     if not skip_visualize and result.bracken_df is not None:
         log.info("[bold]Step 5/5: Generating Visualisations[/bold]")
+        step_t0 = time.perf_counter()
         vis_dir = cfg.output_dir / "05_visualisation"
         plots = generate_all_plots(result.bracken_df, vis_dir, cfg=cfg)
         result.plots = plots
@@ -315,13 +321,16 @@ def run_pipeline(
                 cfg=cfg,
             )
             result.plots.extend(dashboard_paths)
+        log.info(f"Step 5/5 completed in {time.perf_counter() - step_t0:.1f}s")
     else:
         log.info("Skipping visualisation")
 
     # ================================================================
     # Write result summary tables
     # ================================================================
+    step_t0 = time.perf_counter()
     _write_result_tables(result, cfg)
+    log.info(f"Result table export completed in {time.perf_counter() - step_t0:.1f}s")
 
     # ================================================================
     # Done

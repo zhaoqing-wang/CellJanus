@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Bulk Kraken2 summary fix**: Corrected bulk classification summary totals so `Classified reads` and `Unclassified` are derived from the Kraken2 root and unclassified rows rather than assuming the first report row is the total.
+- **scRNA-seq summary semantics fixed**: CLI summaries, `pipeline_summary.csv`, and `species_summary.csv` now respect `--min-reads` so headline metrics match the exported cell matrix. Raw pre-filter cell/read counts are still retained as separate metrics for traceability.
+- **Default host/non-informative taxon removal**: `scrnaseq` now removes `Homo sapiens`, `cellular organisms`, `root`, and `other sequences` before per-cell aggregation by default. New CLI flag `--keep-host-taxa` restores the previous unfiltered behavior.
+- **Step duration logging**: Added explicit completion timing logs for long-running steps in both bulk and scRNA-seq modes, including final table export timing, to make pauses between major stages easier to interpret on large datasets.
 - **README bulk command consistency**: Unified `celljanus run` examples in Sections 2.1/2.2/2.3 to use the same long-form CLI options (`--read1`, `--read2`, `--host-index`, `--kraken2-db`, `--output-dir`) for clearer documentation and fewer copy/paste mistakes.
 - **README scRNA command fix**: Corrected a shell line-continuation typo in Section 3.2 (`--min-reads 50 \`) that could break multi-line bash commands.
 - **README barcode documentation corrected**: Updated 10x barcode location description to match current behavior and real 10x FASTQ structure: primary extraction from R1 sequence (bp 1-16 CB, 17-28 UMI), with `CB:Z:`/`UB:Z:` header tags as fallback.

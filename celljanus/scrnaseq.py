@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import gzip
 import re
+import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -38,9 +39,20 @@ from celljanus.utils import get_logger, file_size_human
 # 10x Genomics: CB:Z:AGCTAGCTAG UB:Z:ACTGACTG in read header comment
 TENX_CB_PATTERN = re.compile(r"CB:Z:([ACGT]+)")
 TENX_UB_PATTERN = re.compile(r"UB:Z:([ACGT]+)")
+TAXID_PATTERN = re.compile(r"\(taxid\s+(\d+)\)")
 
 # Alternative: barcode in read name (e.g., @readname_CB_UMI)
 UNDERSCORE_PATTERN = re.compile(r"_([ACGTN]{16})_([ACGTN]{10,12})$")
+
+DEFAULT_EXCLUDED_TAXIDS = frozenset({1, 9606, 28384, 131567})
+DEFAULT_EXCLUDED_TAXON_NAMES = frozenset(
+    {
+        "homo sapiens",
+        "cellular organisms",
+        "root",
+        "other sequences",
+    }
+)
 
 
 @dataclass
@@ -60,6 +72,9 @@ class BarcodeConfig:
 
     # Whitelist filtering
     whitelist_path: Optional[Path] = None  # Path to barcode whitelist
+
+    # Taxon filtering
+    remove_host_taxa: bool = True  # Remove host/root/non-informative taxa by default
 
     # Filtering thresholds
     min_reads_per_cell: int = 1  # Minimum reads to consider a cell valid
@@ -244,6 +259,10 @@ class CellMicrobialAbundance:
             # No UMI - just count reads
             self.cell_species_counts[cell_barcode][species] += 1
 
+    def valid_cells(self, min_reads: int = 1) -> list[str]:
+        """Return cell barcodes that pass the minimum-read filter."""
+        return [cb for cb, n in self.cell_total_reads.items() if n >= min_reads]
+
     def to_matrix(self, min_reads: int = 1) -> pd.DataFrame:
         """
         Convert to cells × species abundance matrix.
@@ -258,7 +277,7 @@ class CellMicrobialAbundance:
         DataFrame with cells as rows and species as columns.
         """
         # Filter cells by minimum reads
-        valid_cells = [cb for cb, n in self.cell_total_reads.items() if n >= min_reads]
+        valid_cells = self.valid_cells(min_reads=min_reads)
 
         # Collect all species
         all_species = set()
@@ -337,7 +356,7 @@ class CellMicrobialAbundance:
 
         return pd.DataFrame(rows)
 
-    def to_species_summary(self) -> pd.DataFrame:
+    def to_species_summary(self, min_reads: int = 1) -> pd.DataFrame:
         """
         Generate species-level summary statistics.
 
@@ -358,9 +377,13 @@ class CellMicrobialAbundance:
             }
         )
 
-        total_cells = len(self.cell_total_reads)
+        valid_cells = self.valid_cells(min_reads=min_reads)
+        valid_cell_set = set(valid_cells)
+        total_cells = len(valid_cells)
 
         for cb, species_counts in self.cell_species_counts.items():
+            if cb not in valid_cell_set:
+                continue
             for sp, count in species_counts.items():
                 species_stats[sp]["total_reads"] += count
                 species_stats[sp]["n_cells"] += 1
@@ -443,29 +466,54 @@ class CellMicrobialAbundance:
             df = df.sort_values("total_microbial_reads", ascending=False).reset_index(drop=True)
         return df
 
-    def summary(self) -> dict:
-        """Return summary statistics."""
-        n_cells = len(self.cell_total_reads)
-        n_cells_with_microbes = len(
-            [cb for cb, counts in self.cell_species_counts.items() if counts]
+    def summary(self, min_reads: int = 1) -> dict:
+        """Return summary statistics aligned with exported tables."""
+        raw_cells = len(self.cell_total_reads)
+        valid_cells = self.valid_cells(min_reads=min_reads)
+        valid_cell_set = set(valid_cells)
+
+        raw_species = set()
+        filtered_species = set()
+        for cb, counts in self.cell_species_counts.items():
+            raw_species.update(counts.keys())
+            if cb in valid_cell_set:
+                filtered_species.update(counts.keys())
+
+        raw_total_reads = sum(sum(counts.values()) for counts in self.cell_species_counts.values())
+        filtered_total_reads = sum(
+            sum(self.cell_species_counts[cb].values()) for cb in valid_cells
         )
 
-        all_species = set()
-        for counts in self.cell_species_counts.values():
-            all_species.update(counts.keys())
-
-        total_microbial_reads = sum(
-            sum(counts.values()) for counts in self.cell_species_counts.values()
-        )
+        filtered_cells = len(valid_cells)
 
         return {
-            "total_cells": n_cells,
-            "cells_with_microbes": n_cells_with_microbes,
-            "cells_without_microbes": n_cells - n_cells_with_microbes,
-            "species_detected": len(all_species),
-            "total_microbial_reads": total_microbial_reads,
-            "mean_reads_per_cell": total_microbial_reads / n_cells if n_cells > 0 else 0,
+            "total_cells": filtered_cells,
+            "cells_with_microbes": filtered_cells,
+            "cells_filtered_out": raw_cells - filtered_cells,
+            "species_detected": len(filtered_species),
+            "total_microbial_reads": filtered_total_reads,
+            "mean_reads_per_cell": filtered_total_reads / filtered_cells if filtered_cells > 0 else 0,
+            "total_cells_raw": raw_cells,
+            "species_detected_raw": len(raw_species),
+            "total_microbial_reads_raw": raw_total_reads,
+            "min_reads_per_cell": min_reads,
         }
+
+
+def _should_exclude_taxon(taxon: str, *, barcode_cfg: BarcodeConfig) -> bool:
+    """Return True if a classification should be excluded before cell aggregation."""
+    if not barcode_cfg.remove_host_taxa:
+        return False
+
+    taxon_lc = taxon.strip().lower()
+    if taxon_lc in DEFAULT_EXCLUDED_TAXON_NAMES:
+        return True
+
+    taxid_match = TAXID_PATTERN.search(taxon)
+    if taxid_match and int(taxid_match.group(1)) in DEFAULT_EXCLUDED_TAXIDS:
+        return True
+
+    return False
 
 
 def parse_kraken2_output_with_barcodes(
@@ -632,7 +680,9 @@ def _extract_barcodes_to_file(
 def _parse_kraken2_with_barcode_file(
     kraken2_output: Path,
     barcode_file: Path,
-) -> CellMicrobialAbundance:
+    *,
+    barcode_cfg: BarcodeConfig,
+) -> tuple[CellMicrobialAbundance, dict[str, int]]:
     """
     Stream Kraken2 output and barcode temp file in lockstep.
 
@@ -644,6 +694,7 @@ def _parse_kraken2_with_barcode_file(
     abundance = CellMicrobialAbundance()
 
     n_classified = 0
+    n_excluded = 0
     n_with_barcode = 0
     n_total = 0
 
@@ -657,6 +708,10 @@ def _parse_kraken2_with_barcode_file(
             n_classified += 1
             taxon = parts[2]
 
+            if _should_exclude_taxon(taxon, barcode_cfg=barcode_cfg):
+                n_excluded += 1
+                continue
+
             bc_parts = bc_line.strip().split("\t")
             cb = bc_parts[0] if bc_parts[0] else None
             umi = bc_parts[1] if len(bc_parts) > 1 and bc_parts[1] else None
@@ -667,10 +722,16 @@ def _parse_kraken2_with_barcode_file(
 
     log.info(
         f"Parsed Kraken2 output: {n_classified:,} classified reads, "
-        f"{n_with_barcode:,} with cell barcodes"
+        f"{n_excluded:,} excluded by taxon filter, "
+        f"{n_with_barcode:,} retained with cell barcodes"
     )
 
-    return abundance
+    return abundance, {
+        "classified_reads_raw": n_classified,
+        "excluded_taxon_reads": n_excluded,
+        "classified_reads_retained": n_classified - n_excluded,
+        "classified_reads_with_barcodes": n_with_barcode,
+    }
 
 
 def run_scrnaseq_classification(
@@ -729,6 +790,7 @@ def run_scrnaseq_classification(
 
     # Step 1: Extract barcodes from R1 → temp file  (streaming, ~0 RAM)
     log.info("[scRNA-seq] Step 1/3: Extracting cell barcodes and UMIs")
+    step_t0 = time.perf_counter()
     temp_dir = output_dir / "tmp"
     temp_dir.mkdir(parents=True, exist_ok=True)
     barcode_temp = temp_dir / "barcode_map.tsv"
@@ -744,23 +806,32 @@ def run_scrnaseq_classification(
         f"[scRNA-seq] Extracted barcodes: {n_with_barcode:,} / {total_reads:,} reads "
         f"({100 * n_with_barcode / total_reads:.1f}%)"
     )
+    log.info(f"[scRNA-seq] Step 1/3 completed in {time.perf_counter() - step_t0:.1f}s")
 
     # Step 2: Classify biological reads with Kraken2
     # For scRNA-seq R2 carries the cDNA insert; R1 is barcode+UMI (28 bp
     # for 10x v3 — shorter than Kraken2's default k=35, yielding 0 k-mers).
     # Classifying R2 alone gives identical results and halves Kraken2 I/O.
     log.info("[scRNA-seq] Step 2/3: Running Kraken2 classification")
+    step_t0 = time.perf_counter()
     classify_dir = output_dir / "classification"
     classify_input = read2 if read2 else read1
     report_path, output_path = run_kraken2(
         classify_input, kraken2_db, classify_dir, cfg=cfg
     )
+    log.info(f"[scRNA-seq] Step 2/3 completed in {time.perf_counter() - step_t0:.1f}s")
 
     # Step 3: Position-based join  (streaming, ~0 RAM)
     # Both barcode_map.tsv and Kraken2 output have one line per input read
     # in the same order, so we iterate them in lockstep.
     log.info("[scRNA-seq] Step 3/3: Mapping classifications to cell barcodes")
-    abundance = _parse_kraken2_with_barcode_file(output_path, barcode_temp)
+    step_t0 = time.perf_counter()
+    abundance, parse_stats = _parse_kraken2_with_barcode_file(
+        output_path,
+        barcode_temp,
+        barcode_cfg=barcode_cfg,
+    )
+    log.info(f"[scRNA-seq] Step 3/3 completed in {time.perf_counter() - step_t0:.1f}s")
 
     # Clean up temp barcode file
     try:
@@ -771,6 +842,7 @@ def run_scrnaseq_classification(
     # Export results - comprehensive CSV outputs
     tables_dir = output_dir / "tables"
     tables_dir.mkdir(parents=True, exist_ok=True)
+    export_t0 = time.perf_counter()
 
     # 1. Raw count matrix (cells × species)
     matrix_path = tables_dir / "cell_species_counts.csv"
@@ -794,7 +866,7 @@ def run_scrnaseq_classification(
 
     # 4. Species summary statistics
     species_summary_path = tables_dir / "species_summary.csv"
-    species_summary_df = abundance.to_species_summary()
+    species_summary_df = abundance.to_species_summary(min_reads=barcode_cfg.min_reads_per_cell)
     species_summary_df.to_csv(species_summary_path, index=False)
     log.info(
         f"[scRNA-seq] Saved species summary → {species_summary_path} ({len(species_summary_df)} species)"
@@ -807,13 +879,15 @@ def run_scrnaseq_classification(
     log.info(f"[scRNA-seq] Saved cell summary → {cell_summary_path}")
 
     # 6. Pipeline summary
-    summary = abundance.summary()
+    summary = abundance.summary(min_reads=barcode_cfg.min_reads_per_cell)
+    summary.update(parse_stats)
     summary_path = tables_dir / "pipeline_summary.csv"
     summary_rows = [{"metric": k, "value": v} for k, v in summary.items()]
     pd.DataFrame(summary_rows).to_csv(summary_path, index=False)
+    log.info(f"[scRNA-seq] Table export completed in {time.perf_counter() - export_t0:.1f}s")
 
     log.info(
-        f"[scRNA-seq] Summary: {summary['cells_with_microbes']} cells with microbes, "
+        f"[scRNA-seq] Summary: {summary['total_cells']:,} cells passed min-reads filter, "
         f"{summary['species_detected']} species detected"
     )
 
