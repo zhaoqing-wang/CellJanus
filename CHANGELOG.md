@@ -5,6 +5,15 @@ All notable changes to CellJanus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [dev] — 2026-03-11
+
+### Changed
+
+- **README bulk command consistency**: Unified `celljanus run` examples in Sections 2.1/2.2/2.3 to use the same long-form CLI options (`--read1`, `--read2`, `--host-index`, `--kraken2-db`, `--output-dir`) for clearer documentation and fewer copy/paste mistakes.
+- **README scRNA command fix**: Corrected a shell line-continuation typo in Section 3.2 (`--min-reads 50 \`) that could break multi-line bash commands.
+- **README barcode documentation corrected**: Updated 10x barcode location description to match current behavior and real 10x FASTQ structure: primary extraction from R1 sequence (bp 1-16 CB, 17-28 UMI), with `CB:Z:`/`UB:Z:` header tags as fallback.
+- **README WSL2 guidance expanded (scRNA-seq)**: Added Linux-native input/output recommendations and explicit warning that writing large matrices directly to `/mnt/*` may cause `OSError: [Errno 5] Input/output error`.
+
 ## [0.2.1] — 2026-03-10
 
 ### Changed

@@ -225,10 +225,12 @@ celljanus run \
 
 ```bash
 celljanus run \
-    -1 sample_R1.fastq.gz -2 sample_R2.fastq.gz \
-    -x ./refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as \
-    -d ./refs/standard_8 \
-    -o ./results --threads 8
+    --read1 sample_R1.fastq.gz \
+    --read2 sample_R2.fastq.gz \
+    --host-index ./refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as \
+    --kraken2-db ./refs/standard_8 \
+    --output-dir ./results \
+    --threads 8
 ```
 
 **Important: Download reference databases first (see [Section 1.3](#13-download-reference-databases)). The `-x` path must point to the Bowtie2 index prefix (without `.bt2` extension).**
@@ -241,9 +243,9 @@ celljanus run \
 ```bash
 # Custom QC and classification parameters
 celljanus run \
-    -1 sample_R1.fastq.gz -2 sample_R2.fastq.gz \
-    -x ./refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as \
-    -d ./refs/standard_8 -o ./results --threads 8 \
+    --read1 sample_R1.fastq.gz --read2 sample_R2.fastq.gz \
+    --host-index ./refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as \
+    --kraken2-db ./refs/standard_8 --output-dir ./results --threads 8 \
     --min-quality 20 --min-length 50 \
     --confidence 0.1 --bracken-level G \
     --plot-format pdf --max-memory 16
@@ -252,7 +254,7 @@ celljanus run \
 celljanus run ... --skip-qc --skip-visualize
 
 # Single-end mode (omit --read2)
-celljanus run -1 sample_SE.fastq.gz -x ./refs/... -d ./refs/... -o ./results
+celljanus run --read1 sample_SE.fastq.gz --host-index ./refs/... --kraken2-db ./refs/... --output-dir ./results
 ```
 
 </details>
@@ -372,7 +374,7 @@ celljanus scrnaseq \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_results \
     --barcode-mode 10x \
-    --min-reads 50 \ 
+    --min-reads 50 \
     --threads 8
 
 # With barcode whitelist filtering (recommended for real data)
@@ -390,6 +392,32 @@ celljanus scrnaseq \
 **Important: Download the Kraken2 database first (see [Section 1.3](#13-download-reference-databases)). Whitelist files are typically provided by 10x Genomics (e.g., `3M-february-2018.txt.gz` for v3 chemistry).**
 
 > *When barcodes list is unavailable, recommend setting min reads to 50 or higher to prevent excessive cell identification and memory/IO overflow.*
+
+<details>
+<summary><b>WSL2 optimization</b></summary>
+
+For best performance on WSL2, use the Linux-native filesystem for both input and output (10–50× faster I/O, avoids I/O errors with large matrices):
+
+```bash
+# Copy input FASTQs to Linux filesystem
+mkdir -p ~/celljanus_work/input ~/celljanus_work/output
+cp /mnt/d/Data/sample_R*.fastq.gz ~/celljanus_work/input/
+
+# Run with Linux-native output directory
+celljanus scrnaseq \
+    --read1 ~/celljanus_work/input/sample_R1.fastq.gz \
+    --read2 ~/celljanus_work/input/sample_R2.fastq.gz \
+    --kraken2-db ~/celljanus_work/db/standard_8 \
+    --output-dir ~/celljanus_work/output/scrna_results \
+    --barcode-mode 10x --min-reads 50 --threads 8
+
+# Copy results back to Windows when done
+cp -r ~/celljanus_work/output/scrna_results /mnt/d/Results/
+```
+
+> **Note**: Writing large cell×species matrices directly to `/mnt/d/` (Windows cross-filesystem mount) can cause `OSError: [Errno 5] Input/output error`. Always set `--output-dir` to a Linux-native path when on WSL2.
+
+</details>
 
 ### 3.3 Other Platforms
 
@@ -418,8 +446,8 @@ celljanus scrnaseq \
 
 | Platform | Mode | Barcode Location |
 |----------|------|------------------|
-| 10x Genomics | `10x` | Header: `CB:Z:BARCODE UB:Z:UMI` |
-| Parse Biosciences | `parse` | Read name (colon-separated) |
+| 10x Genomics | `10x` | R1 sequence bp 1–16 (CB) + 17–28 (UMI); header `CB:Z:`/`UB:Z:` tags as fallback |
+| Parse Biosciences | `parse` | Read name (auto-detected) |
 | Custom | `auto` | Auto-detect |
 
 </details>
