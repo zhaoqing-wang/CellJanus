@@ -870,7 +870,7 @@ def plot_scrnaseq_dashboard(
     richness = (matrix_df > 0).sum(axis=1)
 
     metrics = [
-        ("Total Cells", f"{total_cells:,}"),
+        ("Cells (passing --min-reads)", f"{total_cells:,}"),
         ("Species Detected", f"{total_species}"),
         (
             "Total Microbial Reads",

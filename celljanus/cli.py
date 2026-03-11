@@ -31,15 +31,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import click
-from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
 from celljanus import __version__
 from celljanus.config import CellJanusConfig, find_tools
-from celljanus.utils import get_logger
-
-console = Console(stderr=True)
+from celljanus.utils import get_logger, log_renderable
 
 # Banner
 BANNER = r"""
@@ -72,7 +69,8 @@ def main():
 @main.command()
 def check():
     """Check that all required external tools are installed."""
-    console.print(BANNER, style="bold magenta")
+    log = get_logger()
+    log.info(BANNER)
     tools = find_tools()
     tbl = Table(title="External Tool Availability", show_lines=True)
     tbl.add_column("Tool", style="bold")
@@ -93,11 +91,11 @@ def check():
                 tbl.add_row(label, "[red]✘ Missing[/red]", "—")
                 all_required_ok = False
 
-    console.print(tbl)
+    log_renderable(tbl)
     if all_required_ok:
-        console.print("[bold green]All tools available![/bold green]")
+        log.info("[bold green]All tools available![/bold green]")
     else:
-        console.print(
+        log.info(
             "[yellow]Some required tools are missing. Install them and add to PATH.[/yellow]\n"
             "Required: fastp, bowtie2, samtools, kraken2, bracken\n"
             "Optional: bowtie2-build (for celljanus download hg38)"
@@ -126,11 +124,11 @@ def download_hg38(output_dir: str, skip_index: bool):
     """Download the human genome hg38 FASTA and Bowtie2 index."""
     from celljanus.download import download_hg38_genome
 
-    get_logger(Path(output_dir) / "download.log")
+    log = get_logger(Path(output_dir) / "download.log")
     result = download_hg38_genome(Path(output_dir), download_index=not skip_index)
-    console.print(f"[green]hg38 downloaded to {output_dir}[/green]")
+    log.info(f"[green]hg38 downloaded to {output_dir}[/green]")
     for k, v in result.items():
-        console.print(f"  {k}: {v}")
+        log.info(f"  {k}: {v}")
 
 
 @download.command("kraken2")
@@ -148,9 +146,9 @@ def download_kraken2(output_dir: str, db_name: str):
     """Download a pre-built Kraken2 database."""
     from celljanus.download import download_kraken2_db
 
-    get_logger(Path(output_dir) / "download.log")
+    log = get_logger(Path(output_dir) / "download.log")
     db_dir = download_kraken2_db(Path(output_dir), db_name=db_name)
-    console.print(f"[green]Kraken2 DB '{db_name}' downloaded to {db_dir}[/green]")
+    log.info(f"[green]Kraken2 DB '{db_name}' downloaded to {db_dir}[/green]")
 
 
 @download.command("refseq")
@@ -160,9 +158,9 @@ def download_refseq(taxon: str, output_dir: str):
     """Download RefSeq genomes for a given taxon."""
     from celljanus.download import download_refseq_genomes
 
-    get_logger(Path(output_dir) / "download.log")
+    log = get_logger(Path(output_dir) / "download.log")
     out = download_refseq_genomes(taxon, Path(output_dir))
-    console.print(f"[green]RefSeq genomes for '{taxon}' → {out}[/green]")
+    log.info(f"[green]RefSeq genomes for '{taxon}' \u2192 {out}[/green]")
 
 
 # ======================================================================
@@ -200,7 +198,7 @@ def qc_cmd(read1, read2, output_dir, min_quality, min_length, threads):
         read2=Path(read2) if read2 else None,
         cfg=cfg,
     )
-    console.print(Panel(report.summary(), title="QC Report", border_style="blue"))
+    log_renderable(Panel(report.summary(), title="QC Report", border_style="blue"))
 
 
 # ======================================================================
@@ -236,9 +234,10 @@ def align_cmd(read1, read2, host_index, output_dir, threads):
         read2=Path(read2) if read2 else None,
         cfg=cfg,
     )
-    console.print(f"[green]Alignment complete: {bam}[/green]")
+    log = get_logger()
+    log.info(f"[green]Alignment complete: {bam}[/green]")
     if unmapped_r1 and unmapped_r1.exists():
-        console.print(f"[green]Unmapped reads: {unmapped_r1}[/green]")
+        log.info(f"[green]Unmapped reads: {unmapped_r1}[/green]")
 
 
 # ======================================================================
@@ -267,7 +266,7 @@ def extract_cmd(bam, output_dir, paired, threads):
     get_logger(cfg.log_file)
 
     r1, r2 = extract_unmapped(Path(bam), Path(output_dir), paired=paired, cfg=cfg)
-    console.print(f"[green]Unmapped reads: {r1}[/green]")
+    get_logger().info(f"[green]Unmapped reads: {r1}[/green]")
 
 
 # ======================================================================
@@ -319,7 +318,7 @@ def classify_cmd(read1, read2, kraken2_db, output_dir, confidence, bracken_level
         read2=Path(read2) if read2 else None,
         cfg=cfg,
     )
-    console.print(Panel(result["summary"], title="Classification Results", border_style="green"))
+    log_renderable(Panel(result["summary"], title="Classification Results", border_style="green"))
 
 
 # ======================================================================
@@ -356,7 +355,7 @@ def visualize_cmd(bracken_file, output_dir, top_n, fmt):
 
     df = parse_bracken_output(Path(bracken_file))
     plots = generate_all_plots(df, Path(output_dir), cfg=cfg)
-    console.print(f"[green]Generated {len(plots)} plots in {output_dir}[/green]")
+    get_logger().info(f"[green]Generated {len(plots)} plots in {output_dir}[/green]")
 
 
 # ======================================================================
@@ -421,9 +420,6 @@ def scrnaseq_cmd(
     threads,
 ):
     """Run scRNA-seq microbial classification with per-cell abundance tracking."""
-    console.print(BANNER, style="bold magenta")
-    console.print("[bold blue]scRNA-seq Mode: Per-Cell Microbial Classification[/bold blue]\n")
-
     from celljanus.scrnaseq import (
         BarcodeConfig,
         run_scrnaseq_classification,
@@ -438,7 +434,10 @@ def scrnaseq_cmd(
     )
     if threads:
         cfg.threads = threads
-    get_logger(cfg.log_file)
+    log = get_logger(cfg.log_file)
+
+    log.info(BANNER)
+    log.info("[bold blue]scRNA-seq Mode: Per-Cell Microbial Classification[/bold blue]")
 
     # Check WSL2 I/O performance
     paths_to_check = [Path(read1)]
@@ -448,7 +447,7 @@ def scrnaseq_cmd(
     if detect_wsl2():
         warning = wsl2_io_warning(paths_to_check)
         if warning:
-            console.print(f"[yellow]{warning}[/yellow]\n")
+            log.info(f"[yellow]{warning}[/yellow]")
 
     # Configure barcode extraction
     barcode_cfg = BarcodeConfig(
@@ -477,9 +476,9 @@ def scrnaseq_cmd(
             pipeline_summary=result["summary"],
             cfg=cfg,
         )
-        console.print(f"[green]Generated {len(plots)} scRNA-seq plots[/green]")
+        log.info(f"[green]Generated {len(plots)} scRNA-seq plots[/green]")
     else:
-        console.print(
+        log.info(
             "[yellow]Warning: No cells passed filtering. Try lowering --min-reads.[/yellow]"
         )
 
@@ -488,16 +487,18 @@ def scrnaseq_cmd(
     tbl = Table(title="scRNA-seq Microbial Classification Results", show_lines=True)
     tbl.add_column("Metric", style="bold cyan")
     tbl.add_column("Value", style="green")
+    tbl.add_row("Input reads", f"{summary.get('input_reads', 0):,}")
     tbl.add_row("Raw barcodes with retained classifications", f"{summary['total_cells_raw']:,}")
-    tbl.add_row("Cells passing min-reads filter", f"{summary['total_cells']:,}")
+    tbl.add_row("Cells passing --min-reads filter", f"{summary['total_cells']:,}")
     tbl.add_row("Cells filtered out", f"{summary['cells_filtered_out']:,}")
-    tbl.add_row("Species detected", f"{summary['species_detected']}")
-    tbl.add_row("Total microbial reads", f"{summary['total_microbial_reads']:,}")
-    tbl.add_row("Mean reads/cell", f"{summary['mean_reads_per_cell']:.1f}")
-    console.print(tbl)
+    tbl.add_row("Min reads per cell (--min-reads)", f"{summary['min_reads_per_cell']}")
+    tbl.add_row("Species detected (filtered)", f"{summary['species_detected']}")
+    tbl.add_row("Total microbial reads (filtered)", f"{summary['total_microbial_reads']:,}")
+    tbl.add_row("Mean reads / cell (filtered)", f"{summary['mean_reads_per_cell']:.1f}")
+    log_renderable(tbl)
 
-    console.print(f"\n[green]Cell × species matrix: {result['matrix_path']}[/green]")
-    console.print(f"[green]Long-format table: {result['long_path']}[/green]")
+    log.info(f"[green]Cell × species matrix: {result['matrix_path']}[/green]")
+    log.info(f"[green]Long-format table: {result['long_path']}[/green]")
 
 
 # ======================================================================
@@ -558,8 +559,6 @@ def run_cmd(
     skip_visualize,
 ):
     """Run the complete CellJanus pipeline."""
-    console.print(BANNER, style="bold magenta")
-
     cfg = CellJanusConfig(
         output_dir=Path(output_dir),
         host_index=Path(host_index),
@@ -575,7 +574,8 @@ def run_cmd(
     if max_memory:
         cfg.max_memory_gb = max_memory
 
-    get_logger(cfg.log_file)
+    log = get_logger(cfg.log_file)
+    log.info(BANNER)
 
     from celljanus.pipeline import run_pipeline
 
@@ -625,7 +625,7 @@ def run_cmd(
             f"{len(table_files)} CSV files",
         )
 
-    console.print(tbl)
+    log_renderable(tbl)
 
 
 if __name__ == "__main__":

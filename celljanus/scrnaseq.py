@@ -466,6 +466,24 @@ class CellMicrobialAbundance:
             df = df.sort_values("total_microbial_reads", ascending=False).reset_index(drop=True)
         return df
 
+    def filter_cells(self, min_reads: int = 1) -> int:
+        """
+        Remove cells below *min_reads* from the data structure in-place.
+
+        This frees memory occupied by low-read cells and ensures all
+        subsequent method calls (to_matrix, to_species_summary, etc.)
+        operate only on passing cells without needing the *min_reads*
+        parameter each time.
+
+        Returns the number of cells removed.
+        """
+        to_remove = [cb for cb, n in self.cell_total_reads.items() if n < min_reads]
+        for cb in to_remove:
+            del self.cell_total_reads[cb]
+            self.cell_species_counts.pop(cb, None)
+            self.cell_species_umis.pop(cb, None)
+        return len(to_remove)
+
     def summary(self, min_reads: int = 1) -> dict:
         """Return summary statistics aligned with exported tables."""
         raw_cells = len(self.cell_total_reads)
@@ -839,47 +857,71 @@ def run_scrnaseq_classification(
     except OSError:
         pass
 
+    # ── Compute raw (pre-filter) summary for traceability ──
+    min_reads = barcode_cfg.min_reads_per_cell
+    raw_summary = abundance.summary(min_reads=1)  # pre-filter snapshot
+
+    # ── Early filtering: discard cells below --min-reads ──
+    # This frees memory from low-read cells and makes all downstream
+    # exports (matrix, species_summary, cell_summary, pipeline_summary)
+    # consistent — only cells passing the threshold appear anywhere.
+    if min_reads > 1:
+        n_removed = abundance.filter_cells(min_reads=min_reads)
+        log.info(
+            f"[scRNA-seq] Filtered cells: removed {n_removed:,} cells with "
+            f"< {min_reads} reads; {len(abundance.cell_total_reads):,} cells retained"
+        )
+
     # Export results - comprehensive CSV outputs
     tables_dir = output_dir / "tables"
     tables_dir.mkdir(parents=True, exist_ok=True)
     export_t0 = time.perf_counter()
 
-    # 1. Raw count matrix (cells × species)
+    # 1. Count matrix (cells × species) — only cells passing --min-reads
     matrix_path = tables_dir / "cell_species_counts.csv"
-    matrix_df = abundance.to_matrix(min_reads=barcode_cfg.min_reads_per_cell)
+    matrix_df = abundance.to_matrix(min_reads=1)  # already filtered
     matrix_df.to_csv(matrix_path)
     log.info(
-        f"[scRNA-seq] Saved raw count matrix → {matrix_path} ({len(matrix_df)} cells × {len(matrix_df.columns)} species)"
+        f"[scRNA-seq] Saved count matrix → {matrix_path} "
+        f"({len(matrix_df)} cells × {len(matrix_df.columns)} species)"
     )
 
     # 2. Normalized abundance matrix (CPM-like, for Seurat/Scanpy)
     normalized_path = tables_dir / "cell_species_normalized.csv"
-    normalized_df = abundance.to_normalized_matrix(min_reads=barcode_cfg.min_reads_per_cell)
+    normalized_df = abundance.to_normalized_matrix(min_reads=1)
     normalized_df.to_csv(normalized_path)
     log.info(f"[scRNA-seq] Saved normalized matrix → {normalized_path}")
 
     # 3. Long-format table (for ggplot2/seaborn)
     long_path = tables_dir / "cell_species_long.csv"
-    long_df = abundance.to_long_format(min_reads=barcode_cfg.min_reads_per_cell)
+    long_df = abundance.to_long_format(min_reads=1)
     long_df.to_csv(long_path, index=False)
     log.info(f"[scRNA-seq] Saved long-format table → {long_path}")
 
     # 4. Species summary statistics
     species_summary_path = tables_dir / "species_summary.csv"
-    species_summary_df = abundance.to_species_summary(min_reads=barcode_cfg.min_reads_per_cell)
+    species_summary_df = abundance.to_species_summary(min_reads=1)
     species_summary_df.to_csv(species_summary_path, index=False)
     log.info(
-        f"[scRNA-seq] Saved species summary → {species_summary_path} ({len(species_summary_df)} species)"
+        f"[scRNA-seq] Saved species summary → {species_summary_path} "
+        f"({len(species_summary_df)} species)"
     )
 
     # 5. Cell summary statistics
     cell_summary_path = tables_dir / "cell_summary.csv"
-    cell_summary_df = abundance.to_cell_summary(min_reads=barcode_cfg.min_reads_per_cell)
+    cell_summary_df = abundance.to_cell_summary(min_reads=1)
     cell_summary_df.to_csv(cell_summary_path, index=False)
     log.info(f"[scRNA-seq] Saved cell summary → {cell_summary_path}")
 
-    # 6. Pipeline summary
-    summary = abundance.summary(min_reads=barcode_cfg.min_reads_per_cell)
+    # 6. Pipeline summary — post-filter stats (consistent with all tables)
+    summary = abundance.summary(min_reads=1)  # already filtered
+    # Attach raw pre-filter counts for traceability
+    summary["total_cells_raw"] = raw_summary["total_cells"]
+    summary["species_detected_raw"] = raw_summary["species_detected"]
+    summary["total_microbial_reads_raw"] = raw_summary["total_microbial_reads"]
+    summary["cells_filtered_out"] = raw_summary["total_cells"] - summary["total_cells"]
+    summary["min_reads_per_cell"] = min_reads
+    summary["input_reads"] = total_reads
     summary.update(parse_stats)
     summary_path = tables_dir / "pipeline_summary.csv"
     summary_rows = [{"metric": k, "value": v} for k, v in summary.items()]
@@ -887,7 +929,8 @@ def run_scrnaseq_classification(
     log.info(f"[scRNA-seq] Table export completed in {time.perf_counter() - export_t0:.1f}s")
 
     log.info(
-        f"[scRNA-seq] Summary: {summary['total_cells']:,} cells passed min-reads filter, "
+        f"[scRNA-seq] Summary: {summary['total_cells']:,} cells (of "
+        f"{summary['total_cells_raw']:,} raw) passed --min-reads {min_reads}, "
         f"{summary['species_detected']} species detected"
     )
 

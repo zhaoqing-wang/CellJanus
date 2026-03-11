@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
@@ -25,10 +24,8 @@ from celljanus.classify import classify_and_quantify
 from celljanus.config import CellJanusConfig
 from celljanus.extract import extract_mapped_host
 from celljanus.qc import QCReport, run_qc
-from celljanus.utils import file_size_human, fmt_elapsed, get_logger
+from celljanus.utils import file_size_human, fmt_elapsed, get_logger, log_renderable
 from celljanus.visualize import generate_all_plots, plot_qc_dashboard
-
-console = Console(stderr=True)
 
 
 # ---------------------------------------------------------------------------
@@ -197,7 +194,7 @@ def run_pipeline(
     result = PipelineResult()
     t0 = time.perf_counter()
     # ---- Banner ----
-    console.print(
+    log_renderable(
         Panel.fit(
             "[bold magenta]CellJanus[/bold magenta]: "
             "Dual-Perspective Host–Microbe Deconvolution\n"
@@ -336,7 +333,7 @@ def run_pipeline(
     # Done
     # ================================================================
     result.elapsed_seconds = time.perf_counter() - t0
-    console.print(
+    log_renderable(
         Panel.fit(
             f"[bold green]Pipeline completed in {fmt_elapsed(result.elapsed_seconds)}[/bold green]\n"
             f"Output directory: {cfg.output_dir}",

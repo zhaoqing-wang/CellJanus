@@ -54,6 +54,23 @@ def get_logger(log_file: Optional[Path] = None) -> logging.Logger:
     return _logger
 
 
+def log_renderable(renderable) -> None:
+    """Render a Rich object (Table, Panel, …) and emit via the package logger.
+
+    The renderable is printed into a temporary no-colour Console so that the
+    resulting plain text can be safely passed through ``log.info()`` without
+    double-rendering by the :class:`~rich.logging.RichHandler`.
+    """
+    from io import StringIO
+
+    from rich.markup import escape
+
+    temp = Console(file=StringIO(), width=120, no_color=True, highlight=False)
+    temp.print(renderable)
+    text = escape(temp.file.getvalue().rstrip())
+    get_logger().info(text)
+
+
 # ---------------------------------------------------------------------------
 # Subprocess runner
 # ---------------------------------------------------------------------------
@@ -104,23 +121,53 @@ def run_cmd(
     start = time.perf_counter()
 
     try:
-        result = subprocess.run(
-            [str(c) for c in cmd],
-            stdout=subprocess.PIPE if capture else None,
-            stderr=subprocess.PIPE if capture else subprocess.STDOUT,
-            text=True,
-            check=check,
-            env=merged_env,
-            cwd=str(cwd) if cwd else None,
-            timeout=timeout,
-        )
+        if capture:
+            result = subprocess.run(
+                [str(c) for c in cmd],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=check,
+                env=merged_env,
+                cwd=str(cwd) if cwd else None,
+                timeout=timeout,
+            )
+        else:
+            # Real-time capture: read line-by-line and route through logger
+            proc = subprocess.Popen(
+                [str(c) for c in cmd],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                env=merged_env,
+                cwd=str(cwd) if cwd else None,
+            )
+            collected: list[str] = []
+            for line in proc.stdout:  # type: ignore[union-attr]
+                stripped = line.rstrip("\n\r")
+                if stripped:
+                    log.info(stripped)
+                collected.append(line)
+            proc.wait()
+            output_text = "".join(collected)
+            if check and proc.returncode != 0:
+                raise subprocess.CalledProcessError(
+                    proc.returncode, cmd_str, output=output_text
+                )
+            result = subprocess.CompletedProcess(
+                args=[str(c) for c in cmd],
+                returncode=proc.returncode,
+                stdout=output_text,
+                stderr=None,
+            )
     except FileNotFoundError:
         log.error(f"Command not found: {cmd[0]}")
         raise
     except subprocess.CalledProcessError as exc:
         log.error(f"Command failed (exit {exc.returncode}): {cmd_str}")
-        if exc.stderr:
-            log.error(exc.stderr[:2000])
+        err = exc.stderr or exc.output
+        if err:
+            log.error(err[:2000])
         raise
     except subprocess.TimeoutExpired:
         log.error(f"Command timed out after {timeout}s: {cmd_str}")

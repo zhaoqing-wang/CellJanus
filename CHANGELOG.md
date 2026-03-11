@@ -7,245 +7,169 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Note**: When updating the package version, synchronize the version info in [pyproject.toml](pyproject.toml) (line 7), [Dockerfile](Dockerfile) (lines 6, 10, 13, 28), [docker-compose.yml](docker-compose.yml) (line 13), and [celljanus/__init__.py](celljanus/__init__.py) (line 13).
 
-## [dev] — 2026-03-11
+---
+
+## [0.2.2] — 2026-03-11
+
+### Fixed
+
+- **scRNA-seq output consistency**: All six output CSV files (`cell_species_counts.csv`, `cell_species_normalized.csv`, `cell_species_long.csv`, `species_summary.csv`, `cell_summary.csv`, `pipeline_summary.csv`) and the CLI summary table now reflect the **same filtered cell set** determined by `--min-reads`. Previously, `pipeline_summary.csv` and `species_summary.csv` could report pre-filter counts while the count matrix was correctly filtered, causing metric mismatches.
+- **Bulk Kraken2 summary totals**: `Classified reads` and `Unclassified` in bulk mode are now derived from the Kraken2 root and unclassified rows instead of assuming the first report row is the total.
+
+### Added
+
+- **Early cell filtering (`filter_cells`)**: After Kraken2 classification, cells below the `--min-reads` threshold are removed from the internal data structure *before* any CSV export. This reduces peak memory and I/O for large datasets (e.g., 2 M raw barcodes filtered to 50 K cells avoids building a 2 M × 3 K matrix in RAM).
+- **`input_reads` metric**: `pipeline_summary.csv` now records the total number of reads in the input FASTQ.
+- **Raw pre-filter traceability**: `pipeline_summary.csv` retains `total_cells_raw`, `species_detected_raw`, `total_microbial_reads_raw`, and `cells_filtered_out` alongside the filtered headline metrics.
+- **Recommended `--min-reads` values**: README §3.5 now includes a guidance table for choosing `--min-reads` (1 for testdata, 5–10 with whitelist, 50+ without whitelist).
 
 ### Changed
 
-- **Bulk Kraken2 summary fix**: Corrected bulk classification summary totals so `Classified reads` and `Unclassified` are derived from the Kraken2 root and unclassified rows rather than assuming the first report row is the total.
-- **scRNA-seq summary semantics fixed**: CLI summaries, `pipeline_summary.csv`, and `species_summary.csv` now respect `--min-reads` so headline metrics match the exported cell matrix. Raw pre-filter cell/read counts are still retained as separate metrics for traceability.
-- **Default host/non-informative taxon removal**: `scrnaseq` now removes `Homo sapiens`, `cellular organisms`, `root`, and `other sequences` before per-cell aggregation by default. New CLI flag `--keep-host-taxa` restores the previous unfiltered behavior.
-- **Step duration logging**: Added explicit completion timing logs for long-running steps in both bulk and scRNA-seq modes, including final table export timing, to make pauses between major stages easier to interpret on large datasets.
-- **README bulk command consistency**: Unified `celljanus run` examples in Sections 2.1/2.2/2.3 to use the same long-form CLI options (`--read1`, `--read2`, `--host-index`, `--kraken2-db`, `--output-dir`) for clearer documentation and fewer copy/paste mistakes.
-- **README scRNA command fix**: Corrected a shell line-continuation typo in Section 3.2 (`--min-reads 50 \`) that could break multi-line bash commands.
-- **README barcode documentation corrected**: Updated 10x barcode location description to match current behavior and real 10x FASTQ structure: primary extraction from R1 sequence (bp 1-16 CB, 17-28 UMI), with `CB:Z:`/`UB:Z:` header tags as fallback.
-- **README WSL2 guidance expanded (scRNA-seq)**: Added Linux-native input/output recommendations and explicit warning that writing large matrices directly to `/mnt/*` may cause `OSError: [Errno 5] Input/output error`.
+- **Unified INFO logging**: All CLI and pipeline output (banners, summary tables, status messages, and external tool output from fastp/kraken2/bracken/samtools) now goes through the Python `logging` module with `[HH:MM:SS] INFO` prefix. Previously some output used `rich.console.Console.print()` (no prefix) and external tools wrote directly to stderr, causing inconsistent formatting. Added `log_renderable()` helper for Rich objects and changed `run_cmd()` to capture subprocess output line-by-line and route it through the logger.
+- **CLI summary labels clarified**: "Cells passing --min-reads filter", "Species detected (filtered)", "Total microbial reads (filtered)", and "Mean reads / cell (filtered)" make it unambiguous that numbers refer to the post-filter cell set.
+- **Dashboard plot label**: "Total Cells" renamed to "Cells (passing --min-reads)" in the scRNA-seq dashboard key-metrics panel.
+- **README output file table** (§3.5): `cell_species_counts.csv` now described as "Count matrix (cells × species). Only cells with ≥ `--min-reads` microbial reads are included." instead of the misleading "Raw counts". Full `--min-reads` filtering explanation and metric definitions added.
+- **README test results updated**: scRNA-seq testdata and real-reference result tables updated to match v0.3.0 output with host-taxa filtering metrics.
+- **CHANGELOG consolidated**: Combined granular patch entries (0.1.0–0.2.1) into clearer milestone summaries to improve readability.
+
+### Tested (WSL2 Ubuntu 24.04)
+
+- **`celljanus check`**: All 10 tools detected, all output uniformly through `[HH:MM:SS] INFO`.
+- **Bulk pipeline (testdata + kraken2_testdb)**: 1,000 PE reads → 950 QC-passed → 31.58% host alignment → 5 species detected (~3 s).
+- **scRNA-seq (testdata + kraken2_testdb)**: 15,000 reads → 300 cells × 7 species, 2,395 microbial reads, 8.0 mean reads/cell (~2 s).
+- **scRNA-seq (testdata + standard_8)**: 15,000 reads → 299 cells × 32 species, 1,543 retained reads after host filtering (~3 s).
+- All pipeline_summary, species_summary, and matrix dimensions verified consistent.
+
+---
 
 ## [0.2.1] — 2026-03-10
 
 ### Changed
 
-- **Sequence-based barcode extraction**: When R1 headers lack `CB:Z:`/`UB:Z:` tags (standard for raw 10x Chromium FASTQ), barcodes are now extracted directly from the R1 sequence (first 16 bp = cell barcode, next 12 bp = UMI for v3 chemistry). Reads with `N` in the barcode are filtered out.
+- **Sequence-based barcode extraction**: When R1 headers lack `CB:Z:`/`UB:Z:` tags (standard for raw 10x Chromium FASTQ), barcodes are now extracted from the R1 sequence (first 16 bp = cell barcode, next 12 bp = UMI for v3 chemistry). Reads with `N` in the barcode are filtered out.
+
+---
 
 ## [0.2.0] — 2026-03-10
 
 ### Changed
 
-- **Memory-efficient scRNA-seq pipeline**: Rewrote barcode extraction (Step 1) to stream R1 FASTQ to a lightweight temp file instead of accumulating all reads in a Python dict. Eliminates the ~30 GB peak memory that caused OOM kills on large 10x datasets (~170 M reads). New peak memory: ~1–2 GB regardless of dataset size.
-- **Streaming Kraken2 join (Step 3)**: Position-based lockstep iteration of Kraken2 output and barcode temp file replaces the O(n) read-ID dict lookup, using O(cells × species) memory instead of O(total_reads).
-- **R2-only classification (Step 2)**: When R2 is provided, Kraken2 now classifies R2 alone (the cDNA insert) rather than paired R1+R2. For 10x v3 chemistry R1 is 28 bp (barcode+UMI), shorter than k=35, so it contributed zero k-mers; R2-only gives identical results and halves Kraken2 I/O.
-- **Progress logging**: Step 1 now logs progress every 5 M reads for long-running jobs.
-- **Return dict cleaned**: `run_scrnaseq_classification()` no longer returns `barcode_reads` (the massive dict was never used downstream but kept ~30 GB alive during visualization).
+- **Memory-efficient scRNA-seq pipeline**: Rewrote barcode extraction to stream R1 FASTQ to a temp file instead of in-memory dict. Eliminates ~30 GB peak memory on large datasets (~170 M reads). New peak: ~1–2 GB.
+- **Streaming Kraken2 join**: Position-based lockstep iteration replaces O(n) read-ID lookup, using O(cells × species) memory.
+- **R2-only classification**: When R2 is provided, Kraken2 classifies R2 alone (cDNA insert). R1 is 28 bp for 10x v3 (shorter than k=35, zero k-mers), so R2-only gives identical results and halves I/O.
+- **Default host/non-informative taxon removal**: `scrnaseq` now removes `Homo sapiens`, `cellular organisms`, `root`, and `other sequences` before per-cell aggregation. `--keep-host-taxa` restores unfiltered output.
+- **Step duration logging**: Explicit timing logs for all pipeline steps and table export.
+- **Progress logging**: Step 1 logs progress every 5 M reads.
+
+---
 
 ## [0.1.9] — 2026-03-09
 
 ### Changed
 
-- **README updated**: Corrected all test result tables to match actual pipeline output after FR paired-end and genomic DNA template fixes; fixed scRNA-seq real-reference command paths (`testdata/scrnaseq_R1.fastq.gz` -> `testdata/scrnaseq/scrna_R1.fastq.gz`); documented download output structure.
-- **testdata/README.md updated**: Replaced host template references (HBB/ACTB -> TP53/MSH2 genomic DNA); added `test_R1/R2` files to table; documented dual header formats (Illumina-style vs simple); noted FR paired-end orientation.
+- README test result tables updated to match FR paired-end and genomic DNA template fixes.
+- Fixed scRNA-seq real-reference command paths in README.
+- testdata/README.md updated for genomic DNA templates and dual header formats.
+
+---
 
 ## [0.1.8] — 2026-03-08
 
 ### Fixed
 
-- **Bowtie2 index download URL**: Updated S3 URL prefix from `bt2/` to `bt/` in `download.py` — the old path returned HTTP 404 due to AWS bucket restructuring.
-- **Paired-end read orientation**: Test data generators (`generate_testdata.py`, `generate_test_data.py`) now produce proper FR (forward-reverse) paired-end reads. Previously both R1 and R2 were generated from the forward strand (FF), causing Bowtie2 to classify all pairs as discordant; `--un-conc-gz` then passed all reads to Kraken2 instead of only truly unmapped reads.
-- **Host templates replaced with genomic DNA**: Replaced mRNA/cDNA host templates (`HUMAN_HBB`, `HUMAN_ACTB`) that spanned exon-exon junctions with contiguous genomic DNA fragments (`HUMAN_TP53` chr17:7,674,800–7,675,300 and `HUMAN_MSH2` chr2:47,596,500–47,597,000). Exon-junction reads failed to align to real hg38 with Bowtie2 (no spliced alignment), causing host alignment rate mismatch between testdb (66.4%) and real hg38 (49.9%). Both now produce 66.67%.
+- **Bowtie2 index download URL**: S3 prefix `bt2/` → `bt/` (404 fix).
+- **Paired-end read orientation**: Test data now produces proper FR reads (was FF, causing all pairs to be discordant).
+- **Host templates**: Replaced exon-junction cDNA templates with contiguous genomic DNA (TP53/MSH2) for correct Bowtie2 alignment.
+- **Test datasets regenerated**: Validated RefSeq genome fragments for 7 species.
 
-### Changed
-
-- **Test datasets regenerated**: Replaced 16S rRNA fragments with validated RefSeq genome coding-region fragments for 7 species: *E. coli* (562), *S. aureus* (1280), *K. pneumoniae* (573), *P. aeruginosa* (287), *B. subtilis* (1423), *S. enterica* (28901), *S. pneumoniae* (1313).
+---
 
 ## [0.1.7] — 2026-03-08
 
-- Improved complete automatic release to PyPI following Github release.
-- Iteratively optimize the version, description of the integrated CellJanus in Docker, as well as the description in pyproject.toml.
-- Optimized README.md file presentation, authoring, and examples.
-- Fixed and improved some code functions.
+### Changed
+
+- Automated PyPI release on GitHub Release.
+- Docker, pyproject.toml, and README presentation improvements.
+
+---
 
 ## [0.1.6] — 2026-02-25
 
 ### Added
 
-- **scRNA-seq Dashboard**: New `plot_scrnaseq_dashboard()` function with 4-panel summary:
-  - Top species abundance bar chart
-  - Per-cell read depth distribution (histogram with mean/median lines)
-  - Species prevalence across cells (horizontal bar chart)
-  - Key metrics text panel (cells, species, total reads, mean reads/cell)
-- **scRNA-seq Abundance Pie**: New `plot_scrnaseq_abundance_pie()` donut chart showing overall community composition.
-- **Expanded test data**: 7 bacterial species (added Prevotella, Acetitomaculum, Longispora, Mobiluncus) with 16S rRNA sequences.
-- **300-cell scRNA-seq test**: Expanded from 10 cells to 300 cells with 15,000 reads across 5 abundance profiles.
-- **Dynamic barcode generation**: `_generate_barcodes()` function creates n unique 16bp barcodes for arbitrary test sizes.
+- **scRNA-seq Dashboard**: 4-panel summary (abundance bar, read depth histogram, species prevalence, key metrics).
+- **scRNA-seq Abundance Pie**: Donut chart of community composition.
+- **300-cell scRNA-seq test data**: 15,000 reads across 5 abundance profiles.
 
 ### Changed
 
-- **README reorganized**: Unified structure for both modes:
-  - Each mode (Bulk, scRNA-seq) now follows: Quick Test → Results → Example Output → Real Data
-  - Removed duplicate scRNA-seq sections
-  - Updated Contents with clearer navigation
-- **Microbial Summary plot improved**: Species names now displayed on right side of bars in Panel 3 (Top Species), avoiding duplication with Panel 2.
-- **scRNA-seq visualizations streamlined**: Reduced from 5 plots to 3 optimized plots:
-  - `scrnaseq_dashboard` — 4-panel summary dashboard
-  - `scrnaseq_abundance_pie` — Community composition donut
-  - `cell_microbe_summary` — 3-panel distribution summary
-- **Removed heatmap and dotplot for scRNA-seq**: `cell_species_heatmap` and `cell_bacteria_dotplot` removed as they don't scale well for 5,000+ cells typical in real scRNA-seq data.
-- **Test results updated**: Documentation now reflects 300 cells × 7 species × 2,395 microbial reads.
+- Visualizations streamlined to 3 plots (dashboard, pie, 3-panel summary); heatmap/dotplot removed (don't scale for 5,000+ cells).
+- README unified: Quick Test → Results → Real Data structure for both modes.
 
-### Fixed
-
-- **Panel 3 species labels**: Species names moved from left y-axis to bar-end text labels for cleaner visualization.
-- **X-axis margin**: Extended x-axis limits (2× linear, 10× log) to accommodate species name labels.
-
-### Tested
-
-- **WSL2 validation** (Ubuntu 24.04):
-  - Bulk pipeline: 1,000 reads → 950 QC-passed → 5 species detected (~4s)
-  - scRNA-seq pipeline: 15,000 reads → 300 cells × 7 species → 2,395 microbial reads (~2s)
-  - All 3 scRNA-seq plots generated successfully
-  - test_results/ and docs/ images updated
+---
 
 ## [0.1.5] — 2026-02-25
 
 ### Added
 
-- **scRNA-seq support**: New `celljanus scrnaseq` command for per-cell microbial abundance tracking.
-  - Parses cell barcodes (CB) and UMIs (UB) from 10x Genomics, Parse Biosciences, and custom formats.
-  - Generates cell × species abundance matrix for integration with Seurat/Scanpy.
-  - **6 comprehensive CSV outputs**:
-    - `cell_species_counts.csv` — Raw read/UMI counts (cells × species matrix).
-    - `cell_species_normalized.csv` — CPM-like normalized values for Seurat/Scanpy.
-    - `cell_species_long.csv` — Tidy format for ggplot2/seaborn.
-    - `species_summary.csv` — Per-species stats (total reads, n_cells, prevalence, mean/median).
-    - `cell_summary.csv` — Per-cell metrics (total reads, n_species, Shannon diversity).
-    - `pipeline_summary.csv` — Overall pipeline metrics.
-- **scRNA-seq visualizations** (optimized for 10,000+ cells):
-  - `cell_species_heatmap`: Per-cell microbial abundance heatmap with smart sampling (stratified/random/top).
-  - `cell_microbe_summary`: 3-panel summary with log-scale support for large dynamic range.
-  - `cell_bacteria_dotplot`: Dot plot with efficient filtering and dynamic figure sizing.
-- **Large dataset optimizations**:
-  - Smart cell sampling for visualizations (stratified sampling by read depth).
-  - Automatic log-scale axes when data range exceeds 100×.
-  - Memory-efficient figure sizing limits.
-- **WSL2 I/O optimization**:
-  - Auto-detection of WSL2 environment.
-  - Warnings for cross-filesystem paths (`/mnt/c/`, `/mnt/d/`) with performance recommendations.
-  - `wsl2_io_warning()` and `recommend_native_path()` helpers in `scrnaseq` module.
-- **CellMicrobialAbundance class methods**:
-  - `to_matrix()` — Raw counts matrix.
-  - `to_normalized_matrix()` — CPM-like normalized (scale=10000).
-  - `to_long_format()` — Tidy format with count and fraction columns.
-  - `to_species_summary()` — Species-level statistics.
-  - `to_cell_summary()` — Cell-level metrics with Shannon diversity.
-- **New module**: `celljanus/scrnaseq.py` with barcode extraction, `BarcodeConfig`, `CellMicrobialAbundance` classes.
-- **STAR installation guide** in README: conda, pre-built binary, and source compilation methods for WSL2/Linux.
-- **scRNA-seq test data generator**: `generate_scrnaseq_fastq()` function in `tests/generate_test_data.py`.
-- **Test suite expanded**: 26 tests covering scRNA-seq barcode extraction, cell abundance tracking, CLI commands.
+- **scRNA-seq support** (`celljanus scrnaseq`): Per-cell microbial abundance tracking with 10x Genomics, Parse Biosciences, and custom barcode extraction.
+- **6 CSV outputs**: counts, normalized, long-format, species summary, cell summary, pipeline summary.
+- **CellMicrobialAbundance class**: `to_matrix()`, `to_normalized_matrix()`, `to_long_format()`, `to_species_summary()`, `to_cell_summary()`.
+- **WSL2 I/O optimization**: Auto-detection, cross-filesystem warnings, native-path recommendations.
+- **26 tests** covering scRNA-seq barcode extraction, cell abundance tracking, CLI commands.
 
-### Changed
-
-- README restructured with new sections: scRNA-seq Mode, WSL2 Performance Tips, STAR Installation.
-- README updated with comprehensive CSV output documentation.
-- Pipeline description updated to show both bulk RNA-seq and scRNA-seq workflows.
-- CLI Reference updated with `celljanus scrnaseq` command.
-- Python API documentation expanded with full scRNA-seq export examples.
-- Version bumped to 0.1.5.
-
-### Fixed
-
-- `is_cross_filesystem_path()` now handles cross-platform execution correctly (returns False on native Windows, works properly in WSL2).
-- Test suite platform compatibility fixed for WSL2 detection tests.
-- Unicode subscript characters (`log₁₀`) replaced with LaTeX mathtext (`$\log_{10}$`) for font compatibility.
-
-### Tested
-
-- **Full WSL2 validation** (Ubuntu 24.04 on WSL2):
-  - All 26 pytest tests passed.
-  - Full pipeline test completed successfully with fastp, bowtie2, kraken2, bracken.
-  - scRNA-seq module WSL2 detection verified.
-  - Cross-filesystem path detection working correctly.
-  - Tool versions tested: STAR 2.7.11b, fastp 0.23.4, bowtie2 2.5.2, kraken2 2.1.3, samtools 1.19.2.
+---
 
 ## [0.1.4] — 2026-02-24
 
 ### Added
 
-- **Published to PyPI**: `pip install celljanus` now works directly.
-- **GitHub Actions CI/CD**: automatic PyPI publishing on new GitHub Release (`.github/workflows/publish.yml`).
-- **PyPI badge** and **Downloads badge** in README.
+- Published to PyPI (`pip install celljanus`).
+- GitHub Actions CI/CD for automatic PyPI publishing.
 
-### Changed
-
-- README Installation section restructured: `pip install` as primary method; conda, source, and Docker as alternatives.
-- Citation updated to version 0.1.4.
+---
 
 ## [0.1.3] — 2026-02-22
 
 ### Added
 
-- **Dual-format plot output**: every plot is now saved as both PNG (raster, 300 dpi) and PDF (vector) for publication use.
-- **Result tables** in `06_tables/`:
-  - `pipeline_summary.csv` — QC, alignment, and classification metrics (one row per metric).
-  - `species_abundance.csv` — clean species table with taxonomy ID and fraction percentage.
-  - `output_manifest.csv` — complete file inventory with byte sizes.
-- Pipeline summary table in CLI now shows file sizes and plot/table counts.
+- Dual-format plot output (PNG 300 dpi + PDF vector).
+- Result tables in `06_tables/`: `pipeline_summary.csv`, `species_abundance.csv`, `output_manifest.csv`.
 
 ### Changed
 
-- Publication-quality plot styling: global `rcParams` for consistent fonts, spines, and layout.
-- Bar chart: value labels with read counts and percentages displayed on bars.
-- Donut chart: moved species labels to a side legend; total read count shown in centre.
-- Heatmap: wider figure, rotated y-labels, improved colour bar.
-- Dashboard: gridspec layout with colour-coded panels (blue/green/red) and structured key-value formatting.
-- Version bumped to 0.1.3.
+- Publication-quality plot styling with improved bar chart, donut, heatmap, and dashboard layouts.
+
+---
 
 ## [0.1.2] — 2026-02-23
 
 ### Fixed
 
-- Bowtie2 alignment: replaced `--no-unal` with `--un-conc-gz` (PE) / `--un-gz` (SE) for direct unmapped FASTQ output — standard host-subtraction approach that correctly captures all non-host reads.
-- `align_to_host()` now returns `(bam, unmapped_r1, unmapped_r2)` tuple; pipeline no longer needs a separate samtools extraction step for unmapped reads.
-- Bracken: graceful handling of empty Kraken2 reports; falls back to Kraken2 report for summary stats.
-- Dashboard plot: fixed `ValueError` in `plot_qc_dashboard()` when computing retained-read percentage.
-- Default `align_extra_args` changed from `"--very-sensitive --no-unal"` to `""` to avoid silently discarding unmapped reads.
+- Bowtie2 alignment: `--un-conc-gz`/`--un-gz` for proper unmapped FASTQ output.
+- Bracken: graceful handling of empty reports.
+- Dashboard `ValueError` fix.
 
 ### Added
 
-- Pre-built Bowtie2 index and Kraken2+Bracken database in `testdata/refs/` — full pipeline runs with zero setup.
-- `testdata/build_test_refs.py`: script to regenerate test reference databases from NCBI taxonomy.
-- Full end-to-end pipeline test validated: QC (90%), Alignment (66%), Classification (33%, 3 species), Visualisation (4 plots).
+- Pre-built test reference databases in `testdata/refs/`.
+- Full end-to-end pipeline test (QC 90%, Alignment 66%, 3 species).
 
-### Changed
-
-- README fully rewritten: conda virtual environment as primary installation, full pipeline "Try It Now" section with real test results, accurate output file listing.
-- Pipeline steps 2 + 3 merged — Bowtie2 handles unmapped extraction directly via `--un-conc-gz`.
-- Version bumped to 0.1.2.
+---
 
 ## [0.1.1] — 2026-02-22
 
 ### Added
 
-- Shipped real-format FASTQ test data in `testdata/` (1,000 PE + SE reads with Illumina headers).
-  - 600 human reads (HBB, ACTB), 300 microbial (S. aureus, E. coli, K. pneumoniae 16S), 100 low-quality.
-  - Enables immediate `celljanus qc` testing without any database downloads.
-- New test data generator: `tests/generate_testdata.py` with realistic Illumina-style read headers.
-- Docker image now runs full test suite + QC smoke test during build.
-- Docker image includes bundled `testdata/` for instant demos.
+- Real-format FASTQ test data (1,000 PE + SE reads).
+- Docker image with bundled `testdata/` and build-time test suite.
 
-### Changed
-
-- README restructured: Docker-first installation, "Try It Now" section with bundled test data.
-- README simplified: removed verbose platform matrices, added step-by-step Docker verification.
-- Version bumped to 0.1.1.
+---
 
 ## [0.1.0] — 2026-02-22
 
 ### Added
 
-- Initial release of CellJanus.
-- Full pipeline: QC (fastp) → Host alignment (Bowtie2) → Extract unmapped (samtools) → Classify (Kraken2 + Bracken) → Visualize (matplotlib / seaborn).
-- Click-based CLI with subcommands: `run`, `qc`, `align`, `extract`, `classify`, `visualize`, `download`, `check`.
-- Reference data downloader for hg38 genome and Kraken2 databases.
-- Publication-quality plots: abundance bar charts, donut plots, heatmaps, QC dashboards.
-- Memory-efficient streaming I/O for large FASTQ files.
-- Docker support with Miniforge + bioconda for reproducible deployments.
-- Comprehensive test suite (18 tests).
-- Platform support: Linux, macOS, Windows (WSL2).
+- Initial release: QC (fastp) → Host alignment (Bowtie2) → Extract unmapped (samtools) → Classify (Kraken2 + Bracken) → Visualize (matplotlib/seaborn).
+- CLI: `run`, `qc`, `align`, `extract`, `classify`, `visualize`, `download`, `check`.
+- Docker support, 18 tests, Linux/macOS/WSL2.

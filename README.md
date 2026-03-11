@@ -314,18 +314,18 @@ celljanus scrnaseq \
 | Metric | Value |
 |--------|-------|
 | Input reads | 15,000 |
-| Cells processed | 300 |
+| Cells (passing --min-reads 1) | 300 |
 | Species detected | 7 |
-| Microbial reads | 2,343 |
-| Mean reads/cell | 7.8 |
+| Total microbial reads | 2,356 |
+| Mean reads / cell | 7.9 |
 
 | Species | Reads | Cells | Prevalence |
 |---------|------:|------:|-----------:|
-| *Escherichia coli* | 474 | 227 | 75.7% |
-| *Pseudomonas aeruginosa* | 401 | 226 | 75.3% |
-| *Klebsiella pneumoniae* | 397 | 216 | 72.0% |
+| *Escherichia coli* | 475 | 228 | 76.0% |
+| *Pseudomonas aeruginosa* | 403 | 227 | 75.7% |
+| *Klebsiella pneumoniae* | 406 | 218 | 72.7% |
 | *Staphylococcus aureus* | 358 | 203 | 67.7% |
-| *Bacillus subtilis* | 339 | 200 | 66.7% |
+| *Bacillus subtilis* | 340 | 201 | 67.0% |
 | *Salmonella enterica* | 235 | 140 | 46.7% |
 | *Streptococcus pneumoniae* | 139 | 106 | 35.3% |
 
@@ -347,20 +347,21 @@ celljanus scrnaseq \
 
 | Metric | Value |
 |--------|-------|
-| Cells processed | 300 |
-| Species detected | 14 |
-| Total classified reads | 7,037 |
-| Mean reads/cell | 23.5 |
+| Cells (passing --min-reads 1) | 300 |
+| Species detected | 16 |
+| Total classified reads | 8,941 |
+| Retained after host filtering | 1,984 |
+| Mean reads / cell | 6.6 |
 
 | Species | Reads |
 |---------|------:|
-| *Homo sapiens* | 5,473 |
-| Enterobacteriaceae (family) | 744 |
+| *Escherichia coli* | 356 |
 | *Pseudomonas aeruginosa* | 348 |
-| Bacillus (genus) | 305 |
-| *Streptococcus pneumoniae* | 97 |
+| *Klebsiella* (genus) | 322 |
+| *Bacillus subtilis* | 289 |
+| *Staphylococcus* (genus) | 243 |
 
-> *With a comprehensive database, host reads (Homo sapiens) are classified and additional taxa appear at higher taxonomic levels (family/genus). The test reads use 91 bp fragments — full-length reads from real experiments achieve higher species-level resolution.*
+> *With a comprehensive database and default host-taxa removal, `Homo sapiens`, `cellular organisms`, `root`, and `other sequences` are filtered before per-cell aggregation. The 8,941 classified reads are reduced to 1,984 retained microbial reads across 16 taxa. Additional taxa appear at higher taxonomic levels (family/genus) because the 91 bp test fragments share conserved k-mers. Full-length reads from real experiments achieve higher species-level resolution. Use `--keep-host-taxa` to see all classifications including host reads.*
 
 </details>
 
@@ -480,19 +481,55 @@ adata[common].obsm["X_microbe"] = microbe_df.loc[common].values
 
 | File | Description |
 |------|-------------|
-| `cell_species_counts.csv` | Raw counts (cells × species) |
-| `cell_species_normalized.csv` | CPM-normalized for Seurat/Scanpy |
-| `cell_species_long.csv` | Tidy format for ggplot2/seaborn |
-| `species_summary.csv` | Per-species statistics for cells passing `--min-reads` |
-| `cell_summary.csv` | Per-cell diversity metrics for cells passing `--min-reads` |
-| `pipeline_summary.csv` | Pipeline metrics with both filtered output counts and raw pre-filter counts |
+| `cell_species_counts.csv` | Count matrix (cells × species). Only cells with ≥ `--min-reads` microbial reads are included. |
+| `cell_species_normalized.csv` | CPM-normalized version of the count matrix, suitable for Seurat/Scanpy integration. |
+| `cell_species_long.csv` | Tidy (long) format of the count matrix for ggplot2/seaborn. |
+| `species_summary.csv` | Per-species statistics computed from cells passing `--min-reads`. |
+| `cell_summary.csv` | Per-cell diversity metrics computed from cells passing `--min-reads`. |
+| `pipeline_summary.csv` | Pipeline metrics including both filtered output counts and raw pre-filter counts for traceability. |
 
-**Metric definitions**
+<details>
+<summary><b>Metric definitions (pipeline_summary.csv / CLI table)</b></summary>
 
-- `Raw barcodes with retained classifications`: number of cell barcodes with at least one retained taxonomic assignment before applying `--min-reads`.
-- `Cells passing min-reads filter`: number of cells exported to `cell_species_counts.csv`, `cell_summary.csv`, and `cell_species_normalized.csv`.
-- `Mean reads / cell`: calculated only across cells that pass `--min-reads`, so it matches the exported matrix.
-- `Species detected`: taxa remaining after host/root filtering and `--min-reads` cell filtering.
+| Metric | Meaning |
+|--------|---------|
+| `input_reads` | Total reads in the input FASTQ. |
+| `total_cells_raw` | Cell barcodes with ≥ 1 retained taxonomic assignment (before `--min-reads`). |
+| `total_cells` | Cells exported to all table files (after `--min-reads`). Labelled "Cells (passing --min-reads)" in plots. |
+| `cells_filtered_out` | `total_cells_raw − total_cells`. |
+| `species_detected` | Distinct taxa remaining across passing cells. |
+| `total_microbial_reads` | Sum of reads across passing cells. |
+| `mean_reads_per_cell` | `total_microbial_reads / total_cells`. Computed over passing cells only, so it matches the exported matrix. |
+| `min_reads_per_cell` | The `--min-reads` value used. |
+
+</details>
+
+<details>
+<summary><b>How `--min-reads` filtering works</b></summary>
+
+All six output files reflect the **same filtered cell set**. When you set `--min-reads N`, CellJanus:
+
+1. Runs Kraken2 classification on all reads.
+2. Counts retained (non-host) microbial reads per cell barcode.
+3. **Discards** every cell with fewer than N microbial reads from the internal data structure.
+4. Exports all tables and plots from the remaining cells only.
+
+Because low-read cells are removed **before** any export, different `--min-reads` values will produce:
+
+- **Different numbers of cells** — higher thresholds mean fewer cells pass.
+- **Different numbers of species** — some species appear only in low-read cells; removing those cells removes their species from the matrix.
+- **Different `Mean Reads / Cell`** — averages are computed over passing cells only, so a higher threshold raises the mean.
+- **Identical Kraken2 classification** — the underlying classification step is the same regardless of `--min-reads`; only the post-classification cell filter differs.
+
+> **Recommended `--min-reads` values**
+>
+> | Scenario | `--min-reads` | Rationale |
+> |----------|:-------------:|-----------|
+> | Testdata / exploration | 1 | Keep everything for debugging. |
+> | Real data with whitelist | 5–10 | Low-read noise removed; most true cells retained. |
+> | Real data without whitelist | 50+ | Without barcode whitelist filtering, many spurious barcodes appear with 1–2 reads. A higher threshold keeps only putative real cells and avoids excessive memory / I/O. |
+
+</details>
 
 ---
 
@@ -614,7 +651,13 @@ results/
 ```
 scrna_results/
 ├── classification/               # Kraken2 report + per-read output
-├── tables/                       # 6 CSVs: counts, normalized, long, species/cell summary
+├── tables/                       # 6 CSVs (see §3.5 for descriptions)
+│   ├── cell_species_counts.csv   # Count matrix (cells × species, filtered by --min-reads)
+│   ├── cell_species_normalized.csv
+│   ├── cell_species_long.csv
+│   ├── species_summary.csv
+│   ├── cell_summary.csv
+│   └── pipeline_summary.csv      # Filtered + raw pre-filter metrics
 ├── visualisation/plots/          # 3 PNG + 3 PDF (dashboard, pie, 3-panel summary)
 └── celljanus.log
 ```
