@@ -375,7 +375,7 @@ celljanus scrnaseq \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_results \
     --barcode-mode 10x \
-    --min-reads 50 \
+    --min-reads 1 \
     --threads 8
 
 # With barcode whitelist filtering (recommended for real data)
@@ -386,15 +386,13 @@ celljanus scrnaseq \
     --output-dir scrna_results \
     --barcode-mode 10x \
     --whitelist 3M-february-2018.txt.gz \
-    --min-reads 5 \
+    --min-reads 1 \
     --threads 8
 ```
 
 **Important: Download the Kraken2 database first (see [Section 1.3](#13-download-reference-databases)). Whitelist files are typically provided by 10x Genomics (e.g., `3M-february-2018.txt.gz` for v3 chemistry).**
 
-> **Note**: When barcodes list is unavailable, recommend setting min reads to 50 or higher to prevent excessive cell identification and memory/IO overflow.
->
-> **Default filtering**: CellJanus removes host/root/non-informative taxa such as `Homo sapiens (taxid 9606)`, `cellular organisms (taxid 131567)`, `root (taxid 1)`, and `other sequences (taxid 28384)` before per-cell aggregation. Use `--keep-host-taxa` if you need raw unfiltered output.
+> **Note**: CellJanus removes host/root/non-informative taxa such as `Homo sapiens (taxid 9606)`, `cellular organisms (taxid 131567)`, `root (taxid 1)`, and `other sequences (taxid 28384)` before per-cell aggregation. Use `--keep-host-taxa` if you need raw unfiltered output.
 
 <details>
 <summary><b>WSL2 optimization</b></summary>
@@ -412,7 +410,7 @@ celljanus scrnaseq \
     --read2 ~/celljanus_work/input/sample_R2.fastq.gz \
     --kraken2-db ~/celljanus_work/db/standard_8 \
     --output-dir ~/celljanus_work/output/scrna_results \
-    --barcode-mode 10x --min-reads 50 --threads 8
+    --barcode-mode 10x --min-reads 1 --threads 8
 
 # Copy results back to Windows when done
 cp -r ~/celljanus_work/output/scrna_results /mnt/d/Results/
@@ -434,7 +432,7 @@ celljanus scrnaseq \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_parse_results \
     --barcode-mode parse \
-    --min-reads 50 \
+    --min-reads 1 \
     --threads 8
 
 # Auto-detect barcode format
@@ -443,7 +441,7 @@ celljanus scrnaseq \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_auto_results \
     --barcode-mode auto \
-    --min-reads 50 \
+    --min-reads 1 \
     --threads 8
 ```
 
@@ -510,7 +508,7 @@ adata[common].obsm["X_microbe"] = microbe_df.loc[common].values
 All six output files reflect the **same filtered cell set**. When you set `--min-reads N`, CellJanus:
 
 1. Runs Kraken2 classification on all reads.
-2. Counts retained (non-host) microbial reads per cell barcode.
+2. Counts retained microbial reads per cell barcode (after default host/root filtering, unless `--keep-host-taxa` is used).
 3. **Discards** every cell with fewer than N microbial reads from the internal data structure.
 4. Exports all tables and plots from the remaining cells only.
 
@@ -521,13 +519,17 @@ Because low-read cells are removed **before** any export, different `--min-reads
 - **Different `Mean Reads / Cell`** — averages are computed over passing cells only, so a higher threshold raises the mean.
 - **Identical Kraken2 classification** — the underlying classification step is the same regardless of `--min-reads`; only the post-classification cell filter differs.
 
+For current default behavior (`--remove-host-taxa`), start with **`--min-reads 1`**. After host/non-informative taxa are removed, this setting preserves the most microbial signal and is recommended as the primary baseline.
+
+Tune `--min-reads` upward mainly when you intentionally run with **`--keep-host-taxa`** (or when no whitelist is provided and barcode noise is high).
+
 > **Recommended `--min-reads` values**
 >
 > | Scenario | `--min-reads` | Rationale |
 > |----------|:-------------:|-----------|
-> | Testdata / exploration | 1 | Keep everything for debugging. |
-> | Real data with whitelist | 5–10 | Low-read noise removed; most true cells retained. |
-> | Real data without whitelist | 50+ | Without barcode whitelist filtering, many spurious barcodes appear with 1–2 reads. A higher threshold keeps only putative real cells and avoids excessive memory / I/O. |
+> | Default mode (`--remove-host-taxa`) | 1 | Recommended baseline: host/non-informative taxa are already removed, so `1` keeps maximal microbial information. |
+> | `--keep-host-taxa` + whitelist | 5–20 | Use a moderate threshold to suppress low-read noise when host reads are retained. |
+> | `--keep-host-taxa` without whitelist | 50+ | High threshold helps remove spurious low-depth barcodes and reduces excessive matrix size / I/O. |
 
 </details>
 
