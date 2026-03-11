@@ -929,7 +929,7 @@ def run_scrnaseq_classification(
     log.info(f"[scRNA-seq] Table export completed in {time.perf_counter() - export_t0:.1f}s")
 
     log.info(
-        f"[scRNA-seq] Summary: {summary['total_cells']:,} cells (of "
+        f"[scRNA-seq] Summary: {summary['total_cells']:,} cells with microbe (of "
         f"{summary['total_cells_raw']:,} raw) passed --min-reads {min_reads}, "
         f"{summary['species_detected']} species detected"
     )

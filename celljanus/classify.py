@@ -16,6 +16,7 @@ Output:
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -134,8 +135,8 @@ def run_bracken(
         run_cmd(cmd, desc=f"Bracken abundance estimation (level={cfg.bracken_level})")
         log.info(f"Bracken output: {bracken_out}")
         return bracken_out
-    except RuntimeError as e:
-        log.warning(f"Bracken failed (may have too few reads): {e}")
+    except (RuntimeError, subprocess.CalledProcessError) as e:
+        log.warning(f"Bracken failed (may have too few reads at level {cfg.bracken_level}): {e}")
         return None
 
 
@@ -238,22 +239,26 @@ def classify_and_quantify(
 
     if bracken_df is not None and len(bracken_df) > 0:
         n_species = len(bracken_df)
+        rank_label = "species"
         top5 = bracken_df.head(5)[["name", "bracken_estimated", "fraction"]].to_string(index=False)
     else:
         n_species = 0
-        # Fall back to Kraken2 report for species-level info
-        species = kraken2_df[kraken2_df["rank"] == "S"].nlargest(5, "reads_clade")
-        if len(species) > 0:
-            top5 = species[["name", "reads_clade", "pct"]].to_string(index=False)
-            n_species = len(kraken2_df[kraken2_df["rank"] == "S"])
+        # Fall back to Kraken2 report — try species, then genus, then family
+        for rank_code, rank_label in [("S", "species"), ("G", "genus"), ("F", "family")]:
+            subset = kraken2_df[kraken2_df["rank"] == rank_code].nlargest(5, "reads_clade")
+            if len(subset) > 0:
+                n_species = len(kraken2_df[kraken2_df["rank"] == rank_code])
+                top5 = subset[["name", "reads_clade", "pct"]].to_string(index=False)
+                break
         else:
+            rank_label = "species"
             top5 = "(none)"
 
     summary = (
         f"Classified reads: {classified_reads:,} / {total_reads:,}\n"
         f"Unclassified: {unclassified:,}\n"
-        f"Species detected: {n_species}\n"
-        f"\nTop 5 species:\n{top5}"
+        f"{rank_label.capitalize()} detected: {n_species}\n"
+        f"\nTop 5 {rank_label}:\n{top5}"
     )
     log.info(f"Classification summary:\n{summary}")
 

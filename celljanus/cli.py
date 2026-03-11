@@ -427,6 +427,7 @@ def scrnaseq_cmd(
         wsl2_io_warning,
     )
     from celljanus.visualize import generate_scrnaseq_plots
+    from rich.panel import Panel
 
     cfg = CellJanusConfig(
         output_dir=Path(output_dir),
@@ -437,7 +438,16 @@ def scrnaseq_cmd(
     log = get_logger(cfg.log_file)
 
     log.info(BANNER)
-    log.info("[bold blue]scRNA-seq Mode: Per-Cell Microbial Classification[/bold blue]")
+    log.info(f"System: {cfg.system_summary}")
+    log_renderable(
+        Panel.fit(
+            "[bold magenta]CellJanus[/bold magenta]: "
+            "scRNA-seq Per-Cell Microbial Classification\n"
+            f"Input: {Path(read1).name}" + (f" + {Path(read2).name}" if read2 else "") + "\n"
+            f"Output: {output_dir}",
+            border_style="blue",
+        )
+    )
 
     # Check WSL2 I/O performance
     paths_to_check = [Path(read1)]
@@ -489,7 +499,7 @@ def scrnaseq_cmd(
     tbl.add_column("Value", style="green")
     tbl.add_row("Input reads", f"{summary.get('input_reads', 0):,}")
     tbl.add_row("Raw barcodes with retained classifications", f"{summary['total_cells_raw']:,}")
-    tbl.add_row("Cells passing --min-reads filter", f"{summary['total_cells']:,}")
+    tbl.add_row("Cells With Microbe (passing --min-reads)", f"{summary['total_cells']:,}")
     tbl.add_row("Cells filtered out", f"{summary['cells_filtered_out']:,}")
     tbl.add_row("Min reads per cell (--min-reads)", f"{summary['min_reads_per_cell']}")
     tbl.add_row("Species detected (filtered)", f"{summary['species_detected']}")

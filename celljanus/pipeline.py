@@ -84,6 +84,23 @@ def _write_result_tables(result: "PipelineResult", cfg: CellJanusConfig) -> None
                 ("Classification", "classified_reads", int(total_classified)),
             ]
         )
+    elif result.kraken2_report is not None:
+        # Bracken unavailable — fall back to Kraken2 report
+        from celljanus.classify import parse_kraken2_report
+
+        k2df = parse_kraken2_report(result.kraken2_report)
+        # Use the lowest available rank with hits
+        for rank_code in ("S", "G", "F"):
+            subset = k2df[k2df["rank"] == rank_code]
+            if len(subset) > 0:
+                rows.extend(
+                    [
+                        ("Classification", "taxa_detected", len(subset)),
+                        ("Classification", "classification_rank", rank_code),
+                        ("Classification", "classified_reads_clade", int(subset["reads_clade"].sum())),
+                    ]
+                )
+                break
 
     rows.append(("Pipeline", "elapsed_seconds", round(result.elapsed_seconds, 2)))
 
@@ -101,6 +118,18 @@ def _write_result_tables(result: "PipelineResult", cfg: CellJanusConfig) -> None
         cols = [c for c in cols if c in export.columns]
         export[cols].to_csv(abundance_path, index=False)
         log.info(f"Saved abundance table → {abundance_path}")
+    elif result.kraken2_report is not None:
+        # Fall back to Kraken2 taxa summary
+        from celljanus.classify import parse_kraken2_report
+
+        k2df = parse_kraken2_report(result.kraken2_report)
+        for rank_code, label in [("S", "species"), ("G", "genus"), ("F", "family")]:
+            subset = k2df[k2df["rank"] == rank_code].nlargest(20, "reads_clade")
+            if len(subset) > 0:
+                taxa_path = tables_dir / f"taxa_{label}_kraken2.csv"
+                subset[["name", "taxid", "reads_clade", "pct"]].to_csv(taxa_path, index=False)
+                log.info(f"Saved Kraken2 {label}-level table → {taxa_path}")
+                break
 
     # --- 3. Output file manifest ---
     manifest_rows = []

@@ -314,7 +314,7 @@ celljanus scrnaseq \
 | Metric | Value |
 |--------|-------|
 | Input reads | 15,000 |
-| Cells (passing --min-reads 1) | 300 |
+| Cells With Microbe (passing --min-reads 1) | 300 |
 | Species detected | 7 |
 | Total microbial reads | 2,356 |
 | Mean reads / cell | 7.9 |
@@ -347,7 +347,7 @@ celljanus scrnaseq \
 
 | Metric | Value |
 |--------|-------|
-| Cells (passing --min-reads 1) | 300 |
+| Cells With Microbe (passing --min-reads 1) | 300 |
 | Species detected | 16 |
 | Total classified reads | 8,941 |
 | Retained after host filtering | 1,984 |
@@ -493,7 +493,7 @@ adata[common].obsm["X_microbe"] = microbe_df.loc[common].values
 |--------|---------|
 | `input_reads` | Total reads in the input FASTQ. |
 | `total_cells_raw` | Cell barcodes with ≥ 1 retained taxonomic assignment (before `--min-reads`). |
-| `total_cells` | Cells exported to all table files (after `--min-reads`). Labelled "Cells (passing --min-reads)" in plots. |
+| `total_cells` | Cells exported to all table files (after `--min-reads`). Labelled "Cells With Microbe (passing --min-reads)" in plots. |
 | `cells_filtered_out` | `total_cells_raw − total_cells`. |
 | `species_detected` | Distinct taxa remaining across passing cells. |
 | `total_microbial_reads` | Sum of reads across passing cells. |

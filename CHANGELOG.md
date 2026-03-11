@@ -9,36 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.2.2] — 2026-03-11
+## [0.2.2] — 2026-03-12
 
-### Fixed
+### Summary
 
-- **scRNA-seq output consistency**: All six output CSV files (`cell_species_counts.csv`, `cell_species_normalized.csv`, `cell_species_long.csv`, `species_summary.csv`, `cell_summary.csv`, `pipeline_summary.csv`) and the CLI summary table now reflect the **same filtered cell set** determined by `--min-reads`. Previously, `pipeline_summary.csv` and `species_summary.csv` could report pre-filter counts while the count matrix was correctly filtered, causing metric mismatches.
-- **Bulk Kraken2 summary totals**: `Classified reads` and `Unclassified` in bulk mode are now derived from the Kraken2 root and unclassified rows instead of assuming the first report row is the total.
+- **scRNA-seq metrics are now consistent**: all exports and CLI summary use the same post-`--min-reads` filtered cell set.
+- **Bulk classification reporting is more robust**: classified/unclassified totals now come from correct Kraken2 rows.
+- **Bracken failures no longer crash bulk runs**: when species-level estimation is unavailable, CellJanus falls back to Kraken2 genus/family summaries.
+- **Host signal removal is optimized and default-enabled (scRNA-seq)**: host/non-informative taxa (e.g., `Homo sapiens`, `root`, `cellular organisms`) are removed by default before per-cell aggregation, improving microbial specificity.
+- **Logging/output readability improved**: unified `[HH:MM:SS] INFO` logging, clearer scRNA labels (e.g., "Cells With Microbe"), and updated dashboard wording.
+- **New summary metrics added**: `input_reads` and raw-vs-filtered traceability fields in `pipeline_summary.csv`.
+- **Documentation updated**: README test-result tables and `--min-reads` recommendations were simplified and aligned with actual outputs.
 
-### Added
+### Validation (WSL2 Ubuntu 24.04)
 
-- **Early cell filtering (`filter_cells`)**: After Kraken2 classification, cells below the `--min-reads` threshold are removed from the internal data structure *before* any CSV export. This reduces peak memory and I/O for large datasets (e.g., 2 M raw barcodes filtered to 50 K cells avoids building a 2 M × 3 K matrix in RAM).
-- **`input_reads` metric**: `pipeline_summary.csv` now records the total number of reads in the input FASTQ.
-- **Raw pre-filter traceability**: `pipeline_summary.csv` retains `total_cells_raw`, `species_detected_raw`, `total_microbial_reads_raw`, and `cells_filtered_out` alongside the filtered headline metrics.
-- **Recommended `--min-reads` values**: README §3.5 now includes a guidance table for choosing `--min-reads` (1 for testdata, 5–10 with whitelist, 50+ without whitelist).
-
-### Changed
-
-- **Unified INFO logging**: All CLI and pipeline output (banners, summary tables, status messages, and external tool output from fastp/kraken2/bracken/samtools) now goes through the Python `logging` module with `[HH:MM:SS] INFO` prefix. Previously some output used `rich.console.Console.print()` (no prefix) and external tools wrote directly to stderr, causing inconsistent formatting. Added `log_renderable()` helper for Rich objects and changed `run_cmd()` to capture subprocess output line-by-line and route it through the logger.
-- **CLI summary labels clarified**: "Cells passing --min-reads filter", "Species detected (filtered)", "Total microbial reads (filtered)", and "Mean reads / cell (filtered)" make it unambiguous that numbers refer to the post-filter cell set.
-- **Dashboard plot label**: "Total Cells" renamed to "Cells (passing --min-reads)" in the scRNA-seq dashboard key-metrics panel.
-- **README output file table** (§3.5): `cell_species_counts.csv` now described as "Count matrix (cells × species). Only cells with ≥ `--min-reads` microbial reads are included." instead of the misleading "Raw counts". Full `--min-reads` filtering explanation and metric definitions added.
-- **README test results updated**: scRNA-seq testdata and real-reference result tables updated to match v0.3.0 output with host-taxa filtering metrics.
-- **CHANGELOG consolidated**: Combined granular patch entries (0.1.0–0.2.1) into clearer milestone summaries to improve readability.
-
-### Tested (WSL2 Ubuntu 24.04)
-
-- **`celljanus check`**: All 10 tools detected, all output uniformly through `[HH:MM:SS] INFO`.
-- **Bulk pipeline (testdata + kraken2_testdb)**: 1,000 PE reads → 950 QC-passed → 31.58% host alignment → 5 species detected (~3 s).
-- **scRNA-seq (testdata + kraken2_testdb)**: 15,000 reads → 300 cells × 7 species, 2,395 microbial reads, 8.0 mean reads/cell (~2 s).
-- **scRNA-seq (testdata + standard_8)**: 15,000 reads → 299 cells × 32 species, 1,543 retained reads after host filtering (~3 s).
-- All pipeline_summary, species_summary, and matrix dimensions verified consistent.
+- `celljanus check`: all required tools detected.
+- Bulk testdata validated on both `kraken2_testdb` and `standard_8` (including graceful Bracken fallback path).
+- scRNA-seq testdata validated on both `kraken2_testdb` and `standard_8` with expected filtered metrics.
 
 ---
 

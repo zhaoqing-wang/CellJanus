@@ -634,8 +634,8 @@ def plot_cell_microbe_summary(
     else:
         ax3.set_xlim(right=x_max * 2.0)  # 2x margin for linear scale
 
-    fig.suptitle(title, fontsize=16, fontweight="bold", y=1.02)
-    fig.tight_layout(rect=[0, 0, 1, 0.97])
+    fig.suptitle(title, fontsize=16, fontweight="bold", y=0.98)
+    fig.subplots_adjust(top=0.92)
 
     return _save(fig, output_path, dpi=cfg.dpi)
 
@@ -870,7 +870,7 @@ def plot_scrnaseq_dashboard(
     richness = (matrix_df > 0).sum(axis=1)
 
     metrics = [
-        ("Cells (passing --min-reads)", f"{total_cells:,}"),
+        ("Cells With Microbe (passing --min-reads)", f"{total_cells:,}"),
         ("Species Detected", f"{total_species}"),
         (
             "Total Microbial Reads",
@@ -913,8 +913,8 @@ def plot_scrnaseq_dashboard(
         )
         y_pos -= 0.12
 
-    fig.suptitle(title, fontsize=18, fontweight="bold", y=1.01)
-    fig.tight_layout(rect=[0, 0, 1, 0.97])
+    fig.suptitle(title, fontsize=18, fontweight="bold", y=0.98)
+    fig.subplots_adjust(top=0.92)
 
     return _save(fig, output_path, dpi=cfg.dpi)
 
