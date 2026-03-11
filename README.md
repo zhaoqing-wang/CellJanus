@@ -292,7 +292,8 @@ celljanus scrnaseq \
     --read2 testdata/scrnaseq/scrna_R2.fastq.gz \
     --kraken2-db testdata/refs/kraken2_testdb \
     --output-dir test_results/scrnaseq \
-    --barcode-mode 10x --min-reads 1
+    --barcode-mode 10x \
+    --min-reads 1
 ```
 
 > **Note**: These commands use relative paths and must be run from the repository root (`CellJanus/`). If you installed via pip or conda from URL (see [§1.1 Alternative methods](#11-installation)), clone the repository first to obtain the `testdata/` directory.
@@ -338,7 +339,8 @@ celljanus scrnaseq \
     --read2 testdata/scrnaseq/scrna_R2.fastq.gz \
     --kraken2-db testdata/refs/standard_8 \
     --output-dir test_results/scrnaseq_real \
-    --barcode-mode 10x --min-reads 1
+    --barcode-mode 10x \
+    --min-reads 1
 ```
 
 | Metric | Value |
@@ -369,19 +371,25 @@ celljanus scrnaseq \
     --read2 sample_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_results \
-    --barcode-mode 10x --threads 8
+    --barcode-mode 10x \
+    --min-reads 50 \ 
+    --threads 8
 
 # With barcode whitelist filtering (recommended for real data)
 celljanus scrnaseq \
-    --read1 sample_R1.fastq.gz --read2 sample_R2.fastq.gz \
+    --read1 sample_R1.fastq.gz \
+    --read2 sample_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_results \
     --barcode-mode 10x \
     --whitelist 3M-february-2018.txt.gz \
-    --min-reads 5 --threads 8
+    --min-reads 5 \
+    --threads 8
 ```
 
 **Important: Download the Kraken2 database first (see [Section 1.3](#13-download-reference-databases)). Whitelist files are typically provided by 10x Genomics (e.g., `3M-february-2018.txt.gz` for v3 chemistry).**
+
+> *When barcodes list is unavailable, recommend setting min reads to 50 or higher to prevent excessive cell identification and memory/IO overflow.*
 
 ### 3.3 Other Platforms
 
@@ -394,14 +402,18 @@ celljanus scrnaseq \
     --read1 parse_R1.fastq.gz --read2 parse_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_parse_results \
-    --barcode-mode parse --min-reads 3 --threads 8
+    --barcode-mode parse \
+    --min-reads 50 \
+    --threads 8
 
 # Auto-detect barcode format
 celljanus scrnaseq \
     --read1 sample_R1.fastq.gz --read2 sample_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_auto_results \
-    --barcode-mode auto
+    --barcode-mode auto \
+    --min-reads 50 \
+    --threads 8
 ```
 
 | Platform | Mode | Barcode Location |
