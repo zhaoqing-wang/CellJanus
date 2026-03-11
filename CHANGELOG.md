@@ -5,6 +5,8 @@ All notable changes to CellJanus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+> **Note**: When updating the package version, synchronize the version info in [pyproject.toml](pyproject.toml) (line 7), [Dockerfile](Dockerfile) (lines 6, 10, 13, 28), [docker-compose.yml](docker-compose.yml) (line 13), and [celljanus/__init__.py](celljanus/__init__.py) (line 13).
+
 ## [dev] — 2026-03-11
 
 ### Changed

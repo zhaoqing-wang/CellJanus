@@ -391,7 +391,7 @@ celljanus scrnaseq \
 
 **Important: Download the Kraken2 database first (see [Section 1.3](#13-download-reference-databases)). Whitelist files are typically provided by 10x Genomics (e.g., `3M-february-2018.txt.gz` for v3 chemistry).**
 
-> *When barcodes list is unavailable, recommend setting min reads to 50 or higher to prevent excessive cell identification and memory/IO overflow.*
+> **Note**: When barcodes list is unavailable, recommend setting min reads to 50 or higher to prevent excessive cell identification and memory/IO overflow.
 
 <details>
 <summary><b>WSL2 optimization</b></summary>
