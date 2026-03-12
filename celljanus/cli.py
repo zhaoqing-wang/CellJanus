@@ -7,8 +7,8 @@ Usage examples
 celljanus download hg38   --output-dir ./refs
 celljanus download kraken2 --output-dir ./refs --db-name standard_8
 
-# Run full pipeline
-celljanus run \\
+# Run full bulk pipeline
+celljanus bulk \\
     --read1 sample_R1.fastq.gz \\
     --read2 sample_R2.fastq.gz \\
     --host-index ./refs/bowtie2_index/GRCh38_noalt_as \\
@@ -219,7 +219,7 @@ def qc_cmd(read1, read2, output_dir, min_quality, min_length, threads):
 @click.option("--output-dir", "-o", required=True, type=click.Path(), help="Output directory.")
 @click.option("--threads", "-t", default=None, type=int, help="Number of threads.")
 def align_cmd(read1, read2, host_index, output_dir, threads):
-    """Align reads to host genome (hg38) using Bowtie2."""
+    """[Bulk] Align reads to host genome (hg38) using Bowtie2."""
     from celljanus.align import align_to_host
 
     cfg = CellJanusConfig(output_dir=output_dir, host_index=Path(host_index))
@@ -257,7 +257,7 @@ def align_cmd(read1, read2, host_index, output_dir, threads):
 @click.option("--paired/--single", default=False, help="Paired-end or single-end.")
 @click.option("--threads", "-t", default=None, type=int, help="Number of threads.")
 def extract_cmd(bam, output_dir, paired, threads):
-    """Extract reads that did NOT align to the host genome."""
+    """[Bulk] Extract reads that did NOT align to the host genome."""
     from celljanus.extract import extract_unmapped
 
     cfg = CellJanusConfig(output_dir=output_dir)
@@ -419,7 +419,7 @@ def scrnaseq_cmd(
     min_reads,
     threads,
 ):
-    """Run scRNA-seq microbial classification with per-cell abundance tracking."""
+    """Run scRNA-seq per-cell microbial classification (10x / Parse)."""
     import time
 
     from celljanus.scrnaseq import (
@@ -523,11 +523,11 @@ def scrnaseq_cmd(
 
 
 # ======================================================================
-# celljanus run — full pipeline
+# celljanus bulk — full bulk RNA-seq pipeline
 # ======================================================================
 
 
-@main.command("run")
+@main.command("bulk")
 @click.option("--read1", "-1", required=True, type=click.Path(exists=True), help="R1 FASTQ file.")
 @click.option(
     "--read2", "-2", default=None, type=click.Path(exists=True), help="R2 FASTQ file (paired-end)."
@@ -579,7 +579,7 @@ def run_cmd(
     skip_classify,
     skip_visualize,
 ):
-    """Run the complete CellJanus pipeline."""
+    """Run the complete CellJanus bulk RNA-seq pipeline (QC → Align → Classify → Visualize)."""
     cfg = CellJanusConfig(
         output_dir=Path(output_dir),
         host_index=Path(host_index),

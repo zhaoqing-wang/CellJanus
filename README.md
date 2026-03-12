@@ -152,7 +152,7 @@ FASTQ → fastp (QC) → Bowtie2 (host) → unmapped reads → Kraken2+Bracken �
 Run immediately with built-in test data — **no downloads required**:
 
 ```bash
-celljanus run \
+celljanus bulk \
     --read1 testdata/reads_R1.fastq.gz \
     --read2 testdata/reads_R2.fastq.gz \
     --host-index testdata/refs/host_genome/host \
@@ -195,7 +195,7 @@ celljanus run \
 **With real references** (hg38 + standard_8):
 
 ```bash
-celljanus run \
+celljanus bulk \
     --read1 testdata/reads_R1.fastq.gz \
     --read2 testdata/reads_R2.fastq.gz \
     --host-index testdata/refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as \
@@ -225,7 +225,7 @@ celljanus run \
 ### 2.2 Real Data
 
 ```bash
-celljanus run \
+celljanus bulk \
     --read1 sample_R1.fastq.gz \
     --read2 sample_R2.fastq.gz \
     --host-index ./refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as \
@@ -243,7 +243,7 @@ celljanus run \
 
 ```bash
 # Custom QC and classification parameters
-celljanus run \
+celljanus bulk \
     --read1 sample_R1.fastq.gz --read2 sample_R2.fastq.gz \
     --host-index ./refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as \
     --kraken2-db ./refs/standard_8 --output-dir ./results --threads 8 \
@@ -252,10 +252,10 @@ celljanus run \
     --plot-format pdf --max-memory 16
 
 # Skip steps for partial re-runs
-celljanus run ... --skip-qc --skip-visualize
+celljanus bulk ... --skip-qc --skip-visualize
 
 # Single-end mode (omit --read2)
-celljanus run --read1 sample_SE.fastq.gz --host-index ./refs/... --kraken2-db ./refs/... --output-dir ./results
+celljanus bulk --read1 sample_SE.fastq.gz --host-index ./refs/... --kraken2-db ./refs/... --output-dir ./results
 ```
 
 </details>
@@ -268,7 +268,7 @@ For best performance on WSL2, store data on the Linux filesystem (10–50× fast
 ```bash
 mkdir -p ~/celljanus_work
 cp /mnt/c/Data/sample*.fastq.gz ~/celljanus_work/
-celljanus run -1 ~/celljanus_work/sample_R1.fastq.gz ...
+celljanus bulk -1 ~/celljanus_work/sample_R1.fastq.gz ...
 ```
 
 CellJanus auto-detects WSL2 and warns about slow cross-filesystem paths.
@@ -540,11 +540,11 @@ Tune `--min-reads` upward mainly when you intentionally run with **`--keep-host-
 
 | Command | Description |
 |---------|-------------|
-| `celljanus run` | Full bulk pipeline: QC → Align → Classify → Visualize |
-| `celljanus scrnaseq` | scRNA-seq per-cell microbial classification |
+| `celljanus bulk` | **[Bulk]** Full pipeline: QC → Align → Classify → Visualize |
+| `celljanus scrnaseq` | **[scRNA-seq]** Per-cell microbial classification (10x / Parse) |
 | `celljanus qc` | Quality control only (fastp) |
-| `celljanus align` | Host alignment only (Bowtie2) |
-| `celljanus extract` | Extract unmapped reads from BAM |
+| `celljanus align` | **[Bulk]** Host alignment only (Bowtie2) |
+| `celljanus extract` | **[Bulk]** Extract unmapped reads from BAM |
 | `celljanus classify` | Taxonomic classification (Kraken2 + Bracken) |
 | `celljanus visualize` | Generate abundance plots from Bracken results |
 | `celljanus download` | Download reference databases (hg38, kraken2, refseq) |

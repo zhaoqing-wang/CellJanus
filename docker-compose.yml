@@ -2,7 +2,7 @@
 #
 # Usage:
 #   docker compose run --rm celljanus celljanus check
-#   docker compose run --rm celljanus celljanus run \
+#   docker compose run --rm celljanus celljanus bulk \
 #       --read1 /data/sample_R1.fastq.gz ...
 
 services:
@@ -10,7 +10,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: celljanus:0.2.3
+    image: celljanus:0.2.4
     volumes:
       - ${DATA_DIR:-./data}:/data
     working_dir: /data

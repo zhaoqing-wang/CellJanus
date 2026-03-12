@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.4] — 2026-03-12
+
+### Summary
+
+- **Unified CLI naming**: Renamed `celljanus run` to `celljanus bulk` so both analysis modes have explicit, parallel commands (`celljanus bulk` / `celljanus scrnaseq`).
+- **Mode-labeled sub-commands**: Bulk-only steps (`align`, `extract`) now show `[Bulk]` in `--help` output; shared and scRNA-seq commands are similarly clarified.
+- **README & Dockerfile updated**: All examples and CLI reference table reflect the new `celljanus bulk` command.
+
+---
+
 ## [0.2.3] — 2026-03-12
 
 ### Summary

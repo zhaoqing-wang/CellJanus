@@ -193,12 +193,12 @@ class TestCLI:
         assert result.exit_code == 0
         assert "--read1" in result.output
 
-    def test_cli_run_help(self):
+    def test_cli_bulk_help(self):
         from click.testing import CliRunner
         from celljanus.cli import main
 
         runner = CliRunner()
-        result = runner.invoke(main, ["run", "--help"])
+        result = runner.invoke(main, ["bulk", "--help"])
         assert result.exit_code == 0
         assert "--host-index" in result.output
         assert "--kraken2-db" in result.output
