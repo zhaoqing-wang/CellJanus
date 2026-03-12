@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Unified CLI naming**: Renamed `celljanus run` to `celljanus bulk` so both analysis modes have explicit, parallel commands (`celljanus bulk` / `celljanus scrnaseq`).
 - **Mode-labeled sub-commands**: Bulk-only steps (`align`, `extract`) now show `[Bulk]` in `--help` output; shared and scRNA-seq commands are similarly clarified.
-- **README & Dockerfile updated**: All examples and CLI reference table reflect the new `celljanus bulk` command.
+- **Consistent output directory structure**: scRNA-seq output now uses numbered folders (`01_classification/`, `02_visualisation/`, `03_tables/`) matching bulk mode's numbered convention. Removed redundant `plots/` subfolder from both modes — plots are saved directly in the visualisation directory.
+- **README & Dockerfile updated**: All examples, output structure diagrams, and CLI reference table reflect the new commands and directory layout.
 
 ---
 

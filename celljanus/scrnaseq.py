@@ -832,7 +832,7 @@ def run_scrnaseq_classification(
     # Classifying R2 alone gives identical results and halves Kraken2 I/O.
     log.info("[scRNA-seq] Step 2/3: Running Kraken2 classification")
     step_t0 = time.perf_counter()
-    classify_dir = output_dir / "classification"
+    classify_dir = output_dir / "01_classification"
     classify_input = read2 if read2 else read1
     report_path, output_path = run_kraken2(
         classify_input, kraken2_db, classify_dir, cfg=cfg
@@ -873,7 +873,7 @@ def run_scrnaseq_classification(
         )
 
     # Export results - comprehensive CSV outputs
-    tables_dir = output_dir / "tables"
+    tables_dir = output_dir / "03_tables"
     tables_dir.mkdir(parents=True, exist_ok=True)
     export_t0 = time.perf_counter()
 

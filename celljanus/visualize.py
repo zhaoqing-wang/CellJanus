@@ -764,7 +764,7 @@ def generate_all_plots(
     if cfg is None:
         cfg = CellJanusConfig()
 
-    output_dir = Path(output_dir) / "plots"
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     paths: list[Path] = []
@@ -997,7 +997,7 @@ def generate_scrnaseq_plots(
     if cfg is None:
         cfg = CellJanusConfig()
 
-    output_dir = Path(output_dir) / "plots"
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     paths: list[Path] = []

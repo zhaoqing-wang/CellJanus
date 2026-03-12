@@ -484,7 +484,7 @@ def scrnaseq_cmd(
 
     matrix_df = result["matrix_df"]
     if len(matrix_df) > 0:
-        vis_dir = Path(output_dir) / "visualisation"
+        vis_dir = Path(output_dir) / "02_visualisation"
         plots = generate_scrnaseq_plots(
             matrix_df,
             vis_dir,
@@ -632,7 +632,7 @@ def run_cmd(
         pdf_count = sum(1 for p in result.plots if str(p).endswith(".pdf"))
         tbl.add_row(
             "Plots",
-            f"{output_dir}/05_visualisation/",
+            f"{output_dir}/05_visualisation/",  # plots stored directly (no plots/ subfolder)
             f"{png_count} PNG + {pdf_count} PDF",
         )
 

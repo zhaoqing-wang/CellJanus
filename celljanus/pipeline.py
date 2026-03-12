@@ -343,7 +343,7 @@ def run_pipeline(
                 qc_report=result.qc_report.__dict__,
                 align_stats=align_stats,
                 classify_summary=result.classify_summary,
-                output_path=vis_dir / "plots" / "pipeline_dashboard.png",
+                output_path=vis_dir / "pipeline_dashboard.png",
                 cfg=cfg,
             )
             result.plots.extend(dashboard_paths)

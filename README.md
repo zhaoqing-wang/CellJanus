@@ -462,7 +462,7 @@ The output CSV files integrate directly with standard scRNA-seq frameworks:
 # R / Seurat
 library(Seurat)
 sc <- readRDS("seurat_object.rds")
-microbe_mat <- read.csv("scrna_results/tables/cell_species_normalized.csv",
+microbe_mat <- read.csv("scrna_results/03_tables/cell_species_normalized.csv",
                         row.names = 1, check.names = FALSE)
 sc[["Microbe"]] <- CreateAssayObject(counts = t(as.matrix(microbe_mat)))
 ```
@@ -471,7 +471,7 @@ sc[["Microbe"]] <- CreateAssayObject(counts = t(as.matrix(microbe_mat)))
 # Python / Scanpy
 import scanpy as sc, pandas as pd
 adata = sc.read_h5ad("adata.h5ad")
-microbe_df = pd.read_csv("scrna_results/tables/cell_species_normalized.csv", index_col=0)
+microbe_df = pd.read_csv("scrna_results/03_tables/cell_species_normalized.csv", index_col=0)
 common = adata.obs_names.intersection(microbe_df.index)
 adata[common].obsm["X_microbe"] = microbe_df.loc[common].values
 ```
@@ -644,7 +644,7 @@ results/
 ├── 01_qc/                        # fastp QC: *_qc.fastq.gz, *.json, *.html
 ├── 02_alignment/                 # Bowtie2: BAM, unmapped FASTQs, stats
 ├── 04_classification/            # Kraken2 report + Bracken species table
-├── 05_visualisation/plots/       # 4 PNG + 4 PDF (bar, pie, heatmap, dashboard)
+├── 05_visualisation/             # 4 PNG + 4 PDF (bar, pie, heatmap, dashboard)
 ├── 06_tables/                    # species_abundance.csv, pipeline_summary.csv, output_manifest.csv
 └── celljanus.log
 ```
@@ -653,15 +653,15 @@ results/
 
 ```
 scrna_results/
-├── classification/               # Kraken2 report + per-read output
-├── tables/                       # 6 CSVs (see §3.5 for descriptions)
+├── 01_classification/            # Kraken2 report + per-read output
+├── 02_visualisation/             # 3 PNG + 3 PDF (dashboard, pie, 3-panel summary)
+├── 03_tables/                    # 6 CSVs (see §3.5 for descriptions)
 │   ├── cell_species_counts.csv   # Count matrix (cells × species, filtered by --min-reads)
 │   ├── cell_species_normalized.csv
 │   ├── cell_species_long.csv
 │   ├── species_summary.csv
 │   ├── cell_summary.csv
 │   └── pipeline_summary.csv      # Filtered + raw pre-filter metrics
-├── visualisation/plots/          # 3 PNG + 3 PDF (dashboard, pie, 3-panel summary)
 └── celljanus.log
 ```
 
