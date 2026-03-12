@@ -122,18 +122,57 @@ celljanus download kraken2 -o ./refs        # Kraken2 standard_8 DB (~5.9 GB)
 *Note: The test data (`testdata/`) and test reference databases are included in the GitHub repository and can be used without downloading any additional references. If you installed via the recommended `git clone` method ([§1.1](#11-installation)), the Quick Tests are ready to run immediately. If you installed via pip or conda from URL, `testdata/` will not be available.*
 
 <details>
-<summary><b>Download Expected Result</b></summary>
+<summary><b>hg38 Download Expected Result</b></summary>
+
+**hg38** (`celljanus download hg38 -o ./refs`):
 
 ```
 refs/
-├── hg38.fa.gz                              # hg38 genome FASTA
-├── GRCh38_noalt_as.zip                     # (downloaded archive, can be deleted)
-└── bowtie2_index/GRCh38_noalt_as/          # Pre-built Bowtie2 index
-    ├── GRCh38_noalt_as.{1,2,3,4}.bt2
-    └── GRCh38_noalt_as.rev.{1,2}.bt2
+├── hg38.fa.gz                                      # hg38 soft-masked genome FASTA (~940 MB, download archive)
+├── GRCh38_noalt_as.zip                             # (downloaded archive, can be deleted)
+└── bowtie2_index/GRCh38_noalt_as/                  # Pre-built Bowtie2 index (~3.9 GB total)
+    ├── GRCh38_noalt_as.1.bt2                       # Index forward strand, part 1 (~938 MB)
+    ├── GRCh38_noalt_as.2.bt2                       # Index forward strand, part 2 (~700 MB)
+    ├── GRCh38_noalt_as.3.bt2                       # Index metadata (~11 KB)
+    ├── GRCh38_noalt_as.4.bt2                       # Index forward strand, part 4 (~700 MB)
+    ├── GRCh38_noalt_as.rev.1.bt2                   # Index reverse strand, part 1 (~938 MB)
+    └── GRCh38_noalt_as.rev.2.bt2                   # Index reverse strand, part 2 (~700 MB)
 ```
 
-The Bowtie2 index prefix for downstream commands is: `./refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as`
+*`hg38.fa.gz` is not required for routine CellJanus runs once `bowtie2_index/GRCh38_noalt_as/` is extracted. You may delete `hg38.fa.gz` to save space if you only use the pre-built index. Keep it if you plan to rebuild Bowtie2 indexes locally.*
+
+> **Note:** The Bowtie2 index prefix for downstream commands is: `./refs/bowtie2_index/GRCh38_noalt_as/GRCh38_noalt_as`
+
+</details>
+
+<details>
+<summary><b>Kraken2 Download Expected Result</b></summary>
+
+**Kraken2** (`celljanus download kraken2 -o ./refs`):
+
+```
+refs/
+├── k2_standard_08gb_20240605.tar.gz        # (downloaded archive, can be deleted)
+└── standard_8/                             # Extracted Kraken2 database directory
+    ├── hash.k2d                            # Primary k-mer hash table (~7.5 GB, core classification index)
+    ├── opts.k2d                            # Database build options
+    ├── taxo.k2d                            # Taxonomy nodes and names
+    ├── seqid2taxid.map                     # Sequence ID → taxonomy ID mapping
+    ├── inspect.txt                         # Human-readable database inspection report
+    ├── ktaxonomy.tsv                       # Kraken2 taxonomy in TSV format
+    ├── library_report.tsv                  # Library build report
+    ├── standard08gb.md5                    # MD5 checksums for integrity verification
+    ├── unmapped_accessions.txt             # Accessions not mapped to any taxon
+    ├── database50mers.kmer_distrib         # Bracken k-mer distribution (read length 50 bp)
+    ├── database75mers.kmer_distrib         # Bracken k-mer distribution (read length 75 bp)
+    ├── database100mers.kmer_distrib        # Bracken k-mer distribution (read length 100 bp)
+    ├── database150mers.kmer_distrib        # Bracken k-mer distribution (read length 150 bp)
+    ├── database200mers.kmer_distrib        # Bracken k-mer distribution (read length 200 bp)
+    ├── database250mers.kmer_distrib        # Bracken k-mer distribution (read length 250 bp)
+    └── database300mers.kmer_distrib        # Bracken k-mer distribution (read length 300 bp)
+```
+
+> *Total size is ~7.6 GB on disk. The three `.k2d` files (`hash.k2d`, `opts.k2d`, `taxo.k2d`) are required for Kraken2 classification; the `database*mers.kmer_distrib` files are required for Bracken abundance re-estimation. Choose the distribution file matching your sequencing read length (most Illumina short-read data: `database150mers.kmer_distrib`).*
 
 </details>
 
