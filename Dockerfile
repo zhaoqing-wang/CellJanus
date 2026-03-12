@@ -3,14 +3,14 @@
 #  Dual-Perspective Host–Microbe Deconvolution Pipeline
 #
 #  Build:
-#    docker build -t celljanus:0.2.2
+#    docker build -t celljanus:0.2.3
 #
 #  Run examples:
 #    # Check tool availability
-#    docker run --rm celljanus:0.2.2 celljanus check
+#    docker run --rm celljanus:0.2.3 celljanus check
 #
 #    # Run full pipeline (mount data directory)
-#    docker run --rm -v /path/to/data:/data celljanus:0.2.2 \
+#    docker run --rm -v /path/to/data:/data celljanus:0.2.3 \
 #        celljanus run \
 #            --read1 /data/sample_R1.fastq.gz \
 #            --read2 /data/sample_R2.fastq.gz \
@@ -25,7 +25,7 @@ FROM condaforge/miniforge3:24.11.3-2 AS base
 
 LABEL maintainer="Zhaoqing Wang" \
     description="CellJanus: Dual-Perspective Deconvolution of Host and Microbial Transcriptomes from FASTQ Data" \
-    version="0.2.2" \
+    version="0.2.3" \
     url="https://github.com/zhaoqing-wang/CellJanus"
 
 # Avoid interactive prompts
