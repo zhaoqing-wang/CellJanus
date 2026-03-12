@@ -119,8 +119,6 @@ celljanus download hg38 -o ./refs           # hg38 FASTA (~940 MB) + Bowtie2 ind
 celljanus download kraken2 -o ./refs        # Kraken2 standard_8 DB (~5.9 GB)
 ```
 
-*Note: The test data (`testdata/`) and test reference databases are included in the GitHub repository and can be used without downloading any additional references. If you installed via the recommended `git clone` method ([§1.1](#11-installation)), the Quick Tests are ready to run immediately. If you installed via pip or conda from URL, `testdata/` will not be available.*
-
 <details>
 <summary><b>hg38 Download Expected Result</b></summary>
 
@@ -175,6 +173,8 @@ refs/
 > *Total size is ~7.6 GB on disk. The three `.k2d` files (`hash.k2d`, `opts.k2d`, `taxo.k2d`) are required for Kraken2 classification; the `database*mers.kmer_distrib` files are required for Bracken abundance re-estimation. Choose the distribution file matching your sequencing read length (most Illumina short-read data: `database150mers.kmer_distrib`).*
 
 </details>
+
+*Note: The test data (`testdata/`) and test reference databases are included in the GitHub repository and can be used without downloading any additional references. If you installed via the recommended `git clone` method ([§1.1](#11-installation)), the Quick Tests are ready to run immediately. If you installed via pip or conda from URL, `testdata/` will not be available.*
 
 ---
 
