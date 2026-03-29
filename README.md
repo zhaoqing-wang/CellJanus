@@ -9,10 +9,7 @@
 
 CellJanus is a Python-based framework for host-microbe analysis directly from FASTQ data, designed to provide **single-cell-resolution microbial inference**. **FASTQ-only analysis is fully supported and recommended as the primary workflow** for both bulk and scRNA-seq data. When 16S data are available, CellJanus can use them as an **optional orthogonal cross-validation layer** to further improve precision in taxa prioritization and cell-type attribution. In scRNA-seq mode, CellJanus assigns microbial taxonomic labels to cell barcodes and generates cells × taxa matrices that integrate with Seurat/Scanpy metadata for downstream host-microbe interpretation.
 
-### Core Objectives
-
-1. **FASTQ-driven accurate microbiota inference**: robust taxonomic profiling from bulk and scRNA FASTQ inputs, with explicit confidence control.
-2. **Optional 16S cross-validation for precision improvement**: use independent 16S evidence (when available) to validate and prioritize taxa, then map validated microbial signals to specific cell types.
+Core objectives within this workflow are: **(1) FASTQ-driven accurate microbiota inference** from bulk and scRNA FASTQ inputs with explicit confidence control, and **(2) optional 16S cross-validation for precision improvement**, using independent 16S evidence (when available) to validate and prioritize taxa before mapping microbial signals to specific cell types.
 
 ## Table of Contents
 
