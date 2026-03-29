@@ -179,29 +179,6 @@ refs/
 
 </details>
 
-### 3.6 Optional 16S Cross-Validation for Cell-Type Resolution
-
-CellJanus does not require 16S input to run. A complete and reliable analysis can be performed from FASTQ alone. When available, 16S can be used as an **optional external cross-validation layer** to increase confidence in FASTQ-derived taxa and sharpen cell-type-level interpretation.
-
-Recommended workflow:
-
-1. Run CellJanus (bulk and/or scRNA-seq) on FASTQ data to generate microbial profiles and per-cell matrices.
-2. Interpret FASTQ-derived taxa directly as the baseline result set.
-3. If 16S data are available, prepare your 16S result table (significant taxa list, enrichment direction, differential abundance, or marker panel).
-4. Cross-validate FASTQ-inferred taxa against 16S-supported taxa, and prioritize the validated intersection for high-confidence interpretation.
-5. Quantify prioritized taxa per cell/per cell type from CellJanus matrices.
-6. Join these values to Seurat/Scanpy metadata (`Cell_type`, `orig.ident`, `Sampling_location`) to resolve which cell populations are most associated with validated microbial effects.
-
-Practical outputs to inspect together:
-
-- CellJanus: `species_summary.csv`, `cell_summary.csv`, `cell_species_normalized.csv`
-- 16S: differential taxa table (e.g., tumor vs adjacent)
-- Integrated: cell-type-level abundance comparison and enrichment plots
-
-This strategy keeps FASTQ-based inference as the primary analytical backbone, while using 16S (when available) as an orthogonal validation axis for more precise and reproducible identification at single-cell resolution.
-
----
-
 ## 2. Bulk RNA-seq Mode
 
 Full pipeline: QC → Host alignment → Microbial classification → Visualization.
@@ -601,6 +578,27 @@ Tune `--min-reads` upward mainly when you intentionally run with **`--keep-host-
 > | `--keep-host-taxa` without whitelist | 50+ | High threshold helps remove spurious low-depth barcodes and reduces excessive matrix size / I/O. |
 
 </details>
+
+### 3.6 Optional 16S Cross-Validation for Cell-Type Resolution
+
+CellJanus does not require 16S input to run. A complete and reliable analysis can be performed from FASTQ alone. When available, 16S can be used as an **optional external cross-validation layer** to increase confidence in FASTQ-derived taxa and sharpen cell-type-level interpretation.
+
+Recommended workflow:
+
+1. Run CellJanus (bulk and/or scRNA-seq) on FASTQ data to generate microbial profiles and per-cell matrices.
+2. Interpret FASTQ-derived taxa directly as the baseline result set.
+3. If 16S data are available, prepare your 16S result table (significant taxa list, enrichment direction, differential abundance, or marker panel).
+4. Cross-validate FASTQ-inferred taxa against 16S-supported taxa, and prioritize the validated intersection for high-confidence interpretation.
+5. Quantify prioritized taxa per cell/per cell type from CellJanus matrices.
+6. Join these values to Seurat/Scanpy metadata (`Cell_type`, `orig.ident`, `Sampling_location`) to resolve which cell populations are most associated with validated microbial effects.
+
+Practical outputs to inspect together:
+
+- CellJanus: `species_summary.csv`, `cell_summary.csv`, `cell_species_normalized.csv`
+- 16S: differential taxa table (e.g., tumor vs adjacent)
+- Integrated: cell-type-level abundance comparison and enrichment plots
+
+This strategy keeps FASTQ-based inference as the primary analytical backbone, while using 16S (when available) as an orthogonal validation axis for more precise and reproducible identification at single-cell resolution.
 
 ---
 
