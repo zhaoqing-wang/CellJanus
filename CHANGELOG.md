@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Stricter scRNA-seq default to reduce misclassification**: default changed from implicit `0.05` to `0.60` (recommended range: `0.5-0.7`).
 - **CLI summary now reports scRNA-seq confidence**: output table includes `Kraken2 confidence (--confidence)` for run traceability.
 - **Documentation updated**: README examples and CLI option table now distinguish bulk vs scRNA-seq confidence defaults and include confidence recommendations.
+- **README positioning and structure refined**: title updated to emphasize dual-perspective host-microbe deconvolution at single-cell resolution; overview now explicitly states FASTQ-only as the primary workflow with optional 16S cross-validation; and section `3.6` was moved under the scRNA-seq chapter after output files for correct document flow.
 - **Version bump**: synchronized to `0.2.5` in `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, and `celljanus/__init__.py`.
 
 ### Validation (WSL2 Ubuntu 24.04)
