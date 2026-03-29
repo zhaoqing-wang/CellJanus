@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.5] — 2026-03-29
+
+### Summary
+
+- **scRNA-seq Kraken2 confidence is now user-configurable**: added `--confidence` to `celljanus scrnaseq`.
+- **Stricter scRNA-seq default to reduce misclassification**: default changed from implicit `0.05` to `0.60` (recommended range: `0.5-0.7`).
+- **CLI summary now reports scRNA-seq confidence**: output table includes `Kraken2 confidence (--confidence)` for run traceability.
+- **Documentation updated**: README examples and CLI option table now distinguish bulk vs scRNA-seq confidence defaults and include confidence recommendations.
+- **Version bump**: synchronized to `0.2.5` in `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, and `celljanus/__init__.py`.
+
+### Validation (WSL2 Ubuntu 24.04)
+
+- `celljanus --version` → `0.2.5`
+- `celljanus check` → all required tools detected.
+- Bulk quick test (`kraken2_testdb`) passed and outputs saved to `test_results/bulk_testdb_v025/`.
+- scRNA-seq confidence sweep (`kraken2_testdb`) results:
+	- `0.5`: 300 cells, 6 species, 1,713 retained microbial reads
+	- `0.6`: 300 cells, 6 species, 1,537 retained microbial reads
+	- `0.7`: 299 cells, 6 species, 1,382 retained microbial reads
+- Selected default: `0.60` (stricter than `0.5` while preserving full cell retention on quick test).
+
+---
+
 ## [0.2.4] — 2026-03-12
 
 ### Summary

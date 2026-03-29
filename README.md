@@ -334,6 +334,7 @@ celljanus scrnaseq \
     --read2 testdata/scrnaseq/scrna_R2.fastq.gz \
     --kraken2-db testdata/refs/kraken2_testdb \
     --output-dir test_results/scrnaseq \
+    --confidence 0.60 \
     --barcode-mode 10x \
     --min-reads 1
 ```
@@ -355,21 +356,20 @@ celljanus scrnaseq \
 |--------|-------|
 | Input reads | 15,000 |
 | Cells With Microbe (passing --min-reads 1) | 300 |
-| Species detected | 7 |
-| Total microbial reads | 2,356 |
-| Mean reads / cell | 7.9 |
+| Species detected | 6 |
+| Total microbial reads | 1,537 |
+| Mean reads / cell | 5.1 |
 
 | Species | Reads | Cells | Prevalence |
 |---------|------:|------:|-----------:|
-| *Escherichia coli* | 475 | 228 | 76.0% |
-| *Pseudomonas aeruginosa* | 403 | 227 | 75.7% |
-| *Klebsiella pneumoniae* | 406 | 218 | 72.7% |
-| *Staphylococcus aureus* | 358 | 203 | 67.7% |
-| *Bacillus subtilis* | 340 | 201 | 67.0% |
-| *Salmonella enterica* | 235 | 140 | 46.7% |
-| *Streptococcus pneumoniae* | 139 | 106 | 35.3% |
+| *Escherichia coli* | 381 | 199 | 66.3% |
+| *Pseudomonas aeruginosa* | 316 | 203 | 67.7% |
+| *Staphylococcus aureus* | 282 | 185 | 61.7% |
+| *Bacillus subtilis* | 252 | 168 | 56.0% |
+| *Salmonella enterica* | 198 | 125 | 41.7% |
+| *Streptococcus pneumoniae* | 108 | 90 | 30.0% |
 
-> *Note: The minimal test database (`kraken2_testdb`) contains only 7 species. For comprehensive classification, use a full database such as `standard_8`.*
+> *Note: As of v0.2.5, scRNA-seq uses a stricter default `--confidence 0.60` to reduce false-positive taxa. In WSL2 quick tests (`kraken2_testdb`), confidence `0.5` and `0.6` retained all 300 cells, while `0.7` began dropping cells (299). `0.6` provided the best strictness-retention balance.*
 
 <br />
 
@@ -414,6 +414,7 @@ celljanus scrnaseq \
     --read2 sample_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_results \
+    --confidence 0.60 \
     --barcode-mode 10x \
     --min-reads 1 \
     --threads 8
@@ -424,6 +425,7 @@ celljanus scrnaseq \
     --read2 sample_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_results \
+    --confidence 0.60 \
     --barcode-mode 10x \
     --whitelist 3M-february-2018.txt.gz \
     --min-reads 1 \
@@ -450,6 +452,7 @@ celljanus scrnaseq \
     --read2 ~/celljanus_work/input/sample_R2.fastq.gz \
     --kraken2-db ~/celljanus_work/db/standard_8 \
     --output-dir ~/celljanus_work/output/scrna_results \
+    --confidence 0.60 \
     --barcode-mode 10x --min-reads 1 --threads 8
 
 # Copy results back to Windows when done
@@ -471,6 +474,7 @@ celljanus scrnaseq \
     --read1 parse_R1.fastq.gz --read2 parse_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_parse_results \
+    --confidence 0.60 \
     --barcode-mode parse \
     --min-reads 1 \
     --threads 8
@@ -480,6 +484,7 @@ celljanus scrnaseq \
     --read1 sample_R1.fastq.gz --read2 sample_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_auto_results \
+    --confidence 0.60 \
     --barcode-mode auto \
     --min-reads 1 \
     --threads 8
@@ -603,7 +608,8 @@ Run `celljanus <command> --help` for full option details.
 | `-o, --output-dir` | `celljanus_output` | Output directory |
 | `-t, --threads` | auto | Worker threads |
 | `--min-quality` | 15 | Phred quality threshold (bulk QC) |
-| `--confidence` | 0.05 | Kraken2 confidence threshold |
+| `--confidence` (bulk) | 0.05 | Kraken2 confidence threshold for bulk mode |
+| `--confidence` (scRNA-seq) | 0.60 | Kraken2 confidence threshold for scRNA-seq mode (recommended range: 0.5–0.7) |
 | `--bracken-level` | S | Taxonomic level (D/P/C/O/F/G/S) |
 | `--barcode-mode` | 10x | Barcode format: 10x / parse / auto (scRNA-seq) |
 | `-w, --whitelist` | — | Cell barcode whitelist (scRNA-seq) |

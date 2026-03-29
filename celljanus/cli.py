@@ -406,6 +406,13 @@ def visualize_cmd(bracken_file, output_dir, top_n, fmt):
     default=True,
     help="Remove host/root/non-informative taxa from scRNA-seq output before cell aggregation.",
 )
+@click.option(
+    "--confidence",
+    default=0.60,
+    show_default=True,
+    type=click.FloatRange(0.0, 1.0),
+    help="Kraken2 confidence threshold for scRNA-seq (recommended: 0.5-0.7).",
+)
 @click.option("--min-reads", default=1, help="Minimum reads per cell to include (default: 1).")
 @click.option("--threads", "-t", default=None, type=int, help="Number of threads.")
 def scrnaseq_cmd(
@@ -416,6 +423,7 @@ def scrnaseq_cmd(
     barcode_mode,
     whitelist,
     remove_host_taxa,
+    confidence,
     min_reads,
     threads,
 ):
@@ -437,6 +445,7 @@ def scrnaseq_cmd(
     cfg = CellJanusConfig(
         output_dir=Path(output_dir),
         kraken2_db=Path(kraken2_db),
+        kraken2_confidence=confidence,
     )
     if threads:
         cfg.threads = threads
@@ -507,6 +516,7 @@ def scrnaseq_cmd(
     tbl.add_row("Cells With Microbe (passing --min-reads)", f"{summary['total_cells']:,}")
     tbl.add_row("Cells filtered out", f"{summary['cells_filtered_out']:,}")
     tbl.add_row("Min reads per cell (--min-reads)", f"{summary['min_reads_per_cell']}")
+    tbl.add_row("Kraken2 confidence (--confidence)", f"{cfg.kraken2_confidence:.2f}")
     tbl.add_row("Species detected (filtered)", f"{summary['species_detected']}")
     tbl.add_row("Total microbial reads (filtered)", f"{summary['total_microbial_reads']:,}")
     tbl.add_row("Mean reads / cell (filtered)", f"{summary['mean_reads_per_cell']:.1f}")

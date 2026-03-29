@@ -212,6 +212,7 @@ class TestCLI:
         assert result.exit_code == 0
         assert "--barcode-mode" in result.output
         assert "--kraken2-db" in result.output
+        assert "--confidence" in result.output
 
 
 # ──────────────────────────────────────────────────────────────────────
