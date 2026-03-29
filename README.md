@@ -1,4 +1,4 @@
-# CellJanus: Dual-Perspective Deconvolution of Host and Microbial Transcriptomes from FASTQ Data
+# CellJanus: Dual-Perspective Deconvolution of Host and Microbial Transcriptomes from FASTQ at Single-Cell Resolution
 
 [![PyPI Version](https://img.shields.io/pypi/v/celljanus?label=PyPI&color=blue)](https://pypi.org/project/celljanus/) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![GitHub Package Version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fzhaoqing-wang%2FCellJanus%2Fmain%2Fpyproject.toml&query=project.version&prefix=v&label=GitHub&color=blue)](https://github.com/zhaoqing-wang/CellJanus/blob/main/pyproject.toml) [![PyPI Downloads](https://img.shields.io/pypi/dm/celljanus
 )](https://pypi.org/project/celljanus/) [![GitHub Maintainer](https://img.shields.io/badge/Maintainer-Zhaoqing_Wang-blue)](https://github.com/zhaoqing-wang)
@@ -7,7 +7,12 @@
 
 <img src="docs/Sticker.png" alt="CellJanus Logo" width="200" align="right"/>
 
-CellJanus is a Python-based computational framework for the joint deconvolution of host and microbial transcriptomes directly from raw FASTQ data. CellJanus addresses two complementary analytical scales: **bulk RNA-seq** for sample-level microbial profiling and **scRNA-seq** for cell-resolved microbiome characterization. Notably, the single-cell mode assigns microbial taxonomic labels to individual cell barcodes, enabling the construction of per-cell abundance matrices (cells × species) that can be seamlessly incorporated into standard downstream frameworks such as Seurat and Scanpy. This dual-perspective design bridges the gap between bulk metatranscriptomics and single-cell host–microbe interaction analysis within a single, reproducible toolkit.
+CellJanus is a Python-based framework for host-microbe analysis directly from FASTQ data, designed to provide **single-cell-resolution microbial inference**. **FASTQ-only analysis is fully supported and recommended as the primary workflow** for both bulk and scRNA-seq data. When 16S data are available, CellJanus can use them as an **optional orthogonal cross-validation layer** to further improve precision in taxa prioritization and cell-type attribution. In scRNA-seq mode, CellJanus assigns microbial taxonomic labels to cell barcodes and generates cells × taxa matrices that integrate with Seurat/Scanpy metadata for downstream host-microbe interpretation.
+
+### Core Objectives
+
+1. **FASTQ-driven accurate microbiota inference**: robust taxonomic profiling from bulk and scRNA FASTQ inputs, with explicit confidence control.
+2. **Optional 16S cross-validation for precision improvement**: use independent 16S evidence (when available) to validate and prioritize taxa, then map validated microbial signals to specific cell types.
 
 ## Table of Contents
 
@@ -25,6 +30,7 @@ CellJanus is a Python-based computational framework for the joint deconvolution 
     - [3.3 Other Platforms](#33-other-platforms)
     - [3.4 Downstream Integration (Seurat / Scanpy)](#34-downstream-integration-seurat--scanpy)
     - [3.5 Output Files](#35-output-files)
+    - [3.6 Optional 16S Cross-Validation for Cell-Type Resolution](#36-optional-16s-cross-validation-for-cell-type-resolution)
 4. [CLI Reference](#4-cli-reference)
 5. [Python API](#5-python-api)
     - [5.1 Bulk Pipeline](#51-bulk-pipeline)
@@ -175,6 +181,27 @@ refs/
 > *Total size is ~7.6 GB on disk. The three `.k2d` files (`hash.k2d`, `opts.k2d`, `taxo.k2d`) are required for Kraken2 classification; the `database*mers.kmer_distrib` files are required for Bracken abundance re-estimation. Choose the distribution file matching your sequencing read length (most Illumina short-read data: `database150mers.kmer_distrib`).*
 
 </details>
+
+### 3.6 Optional 16S Cross-Validation for Cell-Type Resolution
+
+CellJanus does not require 16S input to run. A complete and reliable analysis can be performed from FASTQ alone. When available, 16S can be used as an **optional external cross-validation layer** to increase confidence in FASTQ-derived taxa and sharpen cell-type-level interpretation.
+
+Recommended workflow:
+
+1. Run CellJanus (bulk and/or scRNA-seq) on FASTQ data to generate microbial profiles and per-cell matrices.
+2. Interpret FASTQ-derived taxa directly as the baseline result set.
+3. If 16S data are available, prepare your 16S result table (significant taxa list, enrichment direction, differential abundance, or marker panel).
+4. Cross-validate FASTQ-inferred taxa against 16S-supported taxa, and prioritize the validated intersection for high-confidence interpretation.
+5. Quantify prioritized taxa per cell/per cell type from CellJanus matrices.
+6. Join these values to Seurat/Scanpy metadata (`Cell_type`, `orig.ident`, `Sampling_location`) to resolve which cell populations are most associated with validated microbial effects.
+
+Practical outputs to inspect together:
+
+- CellJanus: `species_summary.csv`, `cell_summary.csv`, `cell_species_normalized.csv`
+- 16S: differential taxa table (e.g., tumor vs adjacent)
+- Integrated: cell-type-level abundance comparison and enrichment plots
+
+This strategy keeps FASTQ-based inference as the primary analytical backbone, while using 16S (when available) as an orthogonal validation axis for more precise and reproducible identification at single-cell resolution.
 
 ---
 
