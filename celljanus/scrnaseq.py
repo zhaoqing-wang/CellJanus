@@ -797,7 +797,7 @@ def run_scrnaseq_classification(
 
     log = get_logger()
     if cfg is None:
-        cfg = CellJanusConfig()
+        cfg = CellJanusConfig(kraken2_confidence=0.50)
     if barcode_cfg is None:
         barcode_cfg = BarcodeConfig()
 

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Summary
+
+- **scRNA-seq default confidence updated**: changed from `0.60` to `0.50`.
+- **README single-cell results synchronized**: updated quick-test metrics/tables to match new scRNA-seq default confidence.
+
+---
+
 ## [0.2.5] — 2026-03-29
 
 ### Summary

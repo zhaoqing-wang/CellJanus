@@ -408,7 +408,7 @@ def visualize_cmd(bracken_file, output_dir, top_n, fmt):
 )
 @click.option(
     "--confidence",
-    default=0.60,
+    default=0.50,
     show_default=True,
     type=click.FloatRange(0.0, 1.0),
     help="Kraken2 confidence threshold for scRNA-seq (recommended: 0.5-0.7).",
