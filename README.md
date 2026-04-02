@@ -438,6 +438,16 @@ celljanus scrnaseq \
 > **Note**: CellJanus removes host/root/non-informative taxa such as `Homo sapiens (taxid 9606)`, `cellular organisms (taxid 131567)`, `root (taxid 1)`, and `other sequences (taxid 28384)` before per-cell aggregation. Use `--keep-host-taxa` if you need raw unfiltered output.
 
 <details>
+<summary><b>Confidence Calibration and Data Suitability</b></summary>
+
+For scRNA-seq mode, the default `--confidence 0.50` is a practical starting point, not a universal constant. Our threshold-tuning principle is based on low-microbial/near-negative contexts (for example, team-generated 10x FFPE probe-capture libraries and fresh polyA-end libraries), where expected microbial signal should be absent or extremely low. The confidence threshold is tuned upward until spurious microbial identification is suppressed to a conservative level for that library type.
+
+In practice, setting confidence too low can increase low-confidence taxonomic assignments, background leakage, and false-positive cell-level microbial signals.
+
+CellJanus is generally more suitable for INVADEseq or full-length random-capture sequencing data, where microbial signal retention is more informative. Other library types can still be used for inference, but we strongly recommend orthogonal validation (for example, 16S) before biological interpretation.
+</details>
+
+<details>
 <summary><b>WSL2 optimization</b></summary>
 
 For best performance on WSL2, use the Linux-native filesystem for both input and output (10–50× faster I/O, avoids I/O errors with large matrices):
