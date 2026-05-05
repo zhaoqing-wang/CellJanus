@@ -1,7 +1,6 @@
 # CellJanus: Dual-Perspective Deconvolution of Host and Microbial Transcriptomes from FASTQ at Single-Cell Resolution
 
-[![PyPI Version](https://img.shields.io/pypi/v/celljanus?label=PyPI&color=blue)](https://pypi.org/project/celljanus/) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![GitHub Package Version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fzhaoqing-wang%2FCellJanus%2Fmain%2Fpyproject.toml&query=project.version&prefix=v&label=GitHub&color=blue)](https://github.com/zhaoqing-wang/CellJanus/blob/main/pyproject.toml) [![PyPI Downloads](https://img.shields.io/pypi/dm/celljanus
-)](https://pypi.org/project/celljanus/) [![GitHub Maintainer](https://img.shields.io/badge/Maintainer-Zhaoqing_Wang-blue)](https://github.com/zhaoqing-wang)
+[![PyPI Version](https://img.shields.io/pypi/v/celljanus?label=PyPI&color=blue)](https://pypi.org/project/celljanus/) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![GitHub Package Version](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fzhaoqing-wang%2FCellJanus%2Fmain%2Fpyproject.toml&query=project.version&prefix=v&label=GitHub&color=blue)](https://github.com/zhaoqing-wang/CellJanus/blob/main/pyproject.toml) [![PyPI Downloads](https://static.pepy.tech/personalized-badge/celljanus?period=total&units=INTERNATIONAL_SYSTEM&left_color=GRAY&right_color=GREEN&left_text=Downloads)](https://pepy.tech/projects/celljanus) [![GitHub Maintainer](https://img.shields.io/badge/Maintainer-Zhaoqing_Wang-blue)](https://github.com/zhaoqing-wang)
 
 ## Overview
 
