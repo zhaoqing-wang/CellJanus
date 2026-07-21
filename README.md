@@ -414,7 +414,7 @@ celljanus scrnaseq \
     --read2 sample_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_results \
-    --confidence 0.50 \
+    --confidence 0.20 \
     --barcode-mode 10x \
     --min-reads 1 \
     --threads 8
@@ -425,7 +425,7 @@ celljanus scrnaseq \
     --read2 sample_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_results \
-    --confidence 0.50 \
+    --confidence 0.20 \
     --barcode-mode 10x \
     --whitelist 3M-february-2018.txt.gz \
     --min-reads 1 \
@@ -439,7 +439,7 @@ celljanus scrnaseq \
 <details>
 <summary><b>Confidence Calibration and Data Suitability</b></summary>
 
-For scRNA-seq mode, the default `--confidence 0.50` is a practical starting point, not a universal constant. Our threshold-tuning principle is based on low-microbial/near-negative contexts (for example, team-generated 10x FFPE probe-capture libraries and fresh polyA-end libraries), where expected microbial signal should be absent or extremely low. The confidence threshold is tuned upward until spurious microbial identification is suppressed to a conservative level for that library type.
+For scRNA-seq mode, the default `--confidence 0.20` is a practical starting point, not a universal constant. Our threshold-tuning principle is based on low-microbial/near-negative contexts (for example, team-generated 10x FFPE probe-capture libraries and fresh polyA-end libraries), where expected microbial signal should be absent or extremely low. The confidence threshold is tuned upward until spurious microbial identification is suppressed to a conservative level for that library type.
 
 In practice, setting confidence too low can increase low-confidence taxonomic assignments, background leakage, and false-positive cell-level microbial signals.
 
@@ -462,7 +462,7 @@ celljanus scrnaseq \
     --read2 ~/celljanus_work/input/sample_R2.fastq.gz \
     --kraken2-db ~/celljanus_work/db/standard_8 \
     --output-dir ~/celljanus_work/output/scrna_results \
-    --confidence 0.50 \
+    --confidence 0.20 \
     --barcode-mode 10x --min-reads 1 --threads 8
 
 # Copy results back to Windows when done
@@ -484,7 +484,7 @@ celljanus scrnaseq \
     --read1 parse_R1.fastq.gz --read2 parse_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_parse_results \
-    --confidence 0.50 \
+    --confidence 0.20 \
     --barcode-mode parse \
     --min-reads 1 \
     --threads 8
@@ -494,7 +494,7 @@ celljanus scrnaseq \
     --read1 sample_R1.fastq.gz --read2 sample_R2.fastq.gz \
     --kraken2-db ./refs/standard_8 \
     --output-dir scrna_auto_results \
-    --confidence 0.50 \
+    --confidence 0.20 \
     --barcode-mode auto \
     --min-reads 1 \
     --threads 8
