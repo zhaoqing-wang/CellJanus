@@ -369,7 +369,7 @@ celljanus scrnaseq \
 | *Salmonella enterica* | 216 | 132 | 44.0% |
 | *Streptococcus pneumoniae* | 128 | 99 | 33.0% |
 
-> *Note: The scRNA-seq default is `--confidence 0.50`.*
+> *Note: The scRNA-seq mode test confidence default is `--confidence 0.50`.*
 
 <br />
 
