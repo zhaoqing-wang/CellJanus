@@ -334,7 +334,7 @@ celljanus scrnaseq \
     --read2 testdata/scrnaseq/scrna_R2.fastq.gz \
     --kraken2-db testdata/refs/kraken2_testdb \
     --output-dir test_results/scrnaseq \
-    --confidence 0.50 \
+    --confidence 0.20 \
     --barcode-mode 10x \
     --min-reads 1
 ```
@@ -356,20 +356,21 @@ celljanus scrnaseq \
 |--------|-------|
 | Input reads | 15,000 |
 | Cells With Microbe (passing --min-reads 1) | 300 |
-| Species detected | 6 |
-| Total microbial reads | 1,713 |
-| Mean reads / cell | 5.71 |
+| Species detected | 7 |
+| Total microbial reads | 2,305 |
+| Mean reads / cell | 7.7 |
 
 | Species | Reads | Cells | Prevalence |
 |---------|------:|------:|-----------:|
-| *Escherichia coli* | 420 | 211 | 70.3% |
-| *Pseudomonas aeruginosa* | 363 | 217 | 72.3% |
-| *Staphylococcus aureus* | 317 | 196 | 65.3% |
-| *Bacillus subtilis* | 269 | 177 | 59.0% |
-| *Salmonella enterica* | 216 | 132 | 44.0% |
-| *Streptococcus pneumoniae* | 128 | 99 | 33.0% |
+| *Escherichia coli* | 470 | 227 | 75.7% |
+| *Pseudomonas aeruginosa* | 397 | 225 | 75.0% |
+| *Klebsiella pneumoniae* | 375 | 211 | 70.3% |
+| *Staphylococcus aureus* | 357 | 202 | 67.3% |
+| *Bacillus subtilis* | 334 | 200 | 66.7% |
+| *Salmonella enterica* | 234 | 140 | 46.7% |
+| *Streptococcus pneumoniae* | 138 | 106 | 35.3% |
 
-> *Note: The scRNA-seq mode test confidence default is `--confidence 0.50`.*
+> *Note: The default confidence value for the scRNA-seq mode test is `--confidence 0.20`.*
 
 <br />
 
